@@ -9,7 +9,7 @@ export default function Navbar({ onLoginClick }) {
 
   const links = [
     { to: '/', label: 'Detect' },
-    { to: '/dataset', label: 'Dataset' },
+    { to: '/dataset', label: 'Engines' },
     { to: '/dashboard', label: 'Dashboard' },
   ];
 

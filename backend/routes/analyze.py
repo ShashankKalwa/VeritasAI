@@ -1,17 +1,19 @@
-"""
-POST /api/analyze — Core detection endpoint
-Runs ensemble of ML model + heuristic engine.
-"""
 import re
+import random
 import logging
-from fastapi import APIRouter, HTTPException
+import asyncio
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel, field_validator
 from lib.heuristics import heuristic_analyze
-from lib.ml_model import get_classifier
+from lib.ml_model import get_hf_detector, get_claimbuster_hf, get_google_factcheck
+from lib.file_parser import extract_text, is_meaningful_content
 from lib.supabase_client import get_supabase
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+MAX_FILE_SIZE = 5 * 1024 * 1024
+ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt", "text", "md"}
 
 
 class AnalyzeRequest(BaseModel):
@@ -36,106 +38,186 @@ class AnalyzeResponse(BaseModel):
     indicators: list[str]
     category: str
     heuristic_score: float
-    ml_confidence: int | None = None
-    ensemble_method: str = "heuristic+ml"
+    hf_confidence: int | None = None
+    claimbuster_score: float | None = None
+    claimbuster_checkworthy: bool | None = None
+    google_factcheck_found: bool | None = None
+    google_factcheck_rating: str | None = None
+    google_factcheck_claims: list | None = None
+    engines_used: list[str] = []
+    ensemble_method: str = "multi_engine"
+    source_type: str = "text"
 
 
-def generate_analysis_text(verdict: str, confidence: int, indicators: list[str]) -> str:
-    """Generate human-readable analysis text."""
+def generate_analysis_text(verdict, confidence, indicators, engines):
     ind_text = ", ".join(indicators[:3]).lower() if indicators else "general pattern analysis"
-
+    n = len(engines)
     if verdict == "FAKE":
-        templates = [
-            f"This text exhibits classic misinformation patterns with {confidence}% confidence. Key red flags include {ind_text}. The language patterns are inconsistent with legitimate journalism.",
-            f"Analysis reveals significant misinformation markers ({confidence}% confidence). Detected {ind_text}, suggesting this follows established fake news patterns.",
-            f"Multiple fake news indicators detected. The presence of {ind_text} strongly suggests this content is designed to mislead ({confidence}% confidence).",
-        ]
+        return random.choice([
+            f"Multi-engine analysis ({n} engines) reveals significant misinformation patterns with {confidence}% confidence. Key red flags: {ind_text}.",
+            f"Ensemble of {n} AI engines flags this as likely misinformation ({confidence}% confidence). Detected {ind_text}.",
+            f"Cross-referenced across {n} engines — multiple fake news indicators found. {ind_text.capitalize()} strongly suggest misleading content ({confidence}%).",
+        ])
     else:
-        templates = [
-            f"This text demonstrates legitimate reporting characteristics with {confidence}% confidence. Positive signals include {ind_text}.",
-            f"Analysis indicates genuine news content ({confidence}% confidence). {ind_text.capitalize()} are consistent with credible journalism standards.",
-            f"The text exhibits credibility markers typical of authentic sources. {ind_text.capitalize()} support the assessment ({confidence}% confidence).",
-        ]
+        return random.choice([
+            f"Multi-engine verification ({n} engines) confirms legitimate reporting with {confidence}% confidence. Positive signals: {ind_text}.",
+            f"Ensemble of {n} AI engines validates this content ({confidence}% confidence). {ind_text.capitalize()} match credible journalism.",
+            f"Cross-referenced across {n} engines — credibility markers detected. {ind_text.capitalize()} support authenticity ({confidence}%).",
+        ])
 
-    import random
-    return random.choice(templates)
+
+async def _safe_hf(text):
+    try:
+        return await asyncio.wait_for(get_hf_detector().predict(text), timeout=5.0)
+    except Exception as e:
+        logger.warning(f"HF engine: {e}")
+        return None
+
+
+async def _safe_cb(text):
+    try:
+        return await asyncio.wait_for(get_claimbuster_hf().check(text), timeout=5.0)
+    except Exception as e:
+        logger.warning(f"ClaimBuster engine: {e}")
+        return None
+
+
+async def _safe_gfc(text):
+    try:
+        return await asyncio.wait_for(get_google_factcheck().check(text), timeout=3.0)
+    except Exception as e:
+        logger.warning(f"Google FC engine: {e}")
+        return None
+
+
+async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
+    """Core ensemble detection logic — all engines run in PARALLEL."""
+    engines_used = []
+    votes = []
+
+    # Engine 1: Heuristic NLP (instant, always available)
+    h = heuristic_analyze(text)
+    if not h:
+        raise HTTPException(400, "Text too short for analysis")
+    engines_used.append("heuristic_nlp")
+    votes.append(("FAKE" if h["verdict"] == "FAKE" else "REAL", h["confidence"], 0.30))
+
+    # Engines 2-4: Run ALL in parallel (max 4s timeout)
+    hf_result, cb_result, gfc_result = await asyncio.gather(
+        _safe_hf(text), _safe_cb(text), _safe_gfc(text)
+    )
+
+    # Process HF BERT result
+    hf_conf = None
+    if hf_result:
+        engines_used.append("huggingface_bert")
+        hf_conf = hf_result["confidence"]
+        votes.append((hf_result["verdict"], hf_result["confidence"], 0.35))
+
+    # Process ClaimBuster result
+    cb_score, cb_check = None, None
+    if cb_result:
+        engines_used.append("claimbuster_deberta")
+        cb_score = cb_result["cfs_score"]
+        cb_check = cb_result["is_checkworthy"]
+        if cb_result["is_checkworthy"]:
+            votes.append(("FAKE", min(round(cb_result["cfs_score"] * 80), 80), 0.15))
+
+    # Process Google Fact Check result
+    gfc_found, gfc_rating, gfc_claims = None, None, None
+    if gfc_result:
+        engines_used.append("google_factcheck")
+        gfc_found = gfc_result.get("found", False)
+        gfc_rating = gfc_result.get("overall_rating")
+        gfc_claims = gfc_result.get("claims", [])[:3]
+        if gfc_result.get("found") and gfc_result.get("overall_rating"):
+            if gfc_result["overall_rating"] == "DEBUNKED":
+                votes.append(("FAKE", 90, 0.20))
+            elif gfc_result["overall_rating"] == "VERIFIED":
+                votes.append(("REAL", 90, 0.20))
+
+    # Ensemble merge
+    if not votes:
+        raise HTTPException(500, "No detection engines available")
+
+    total_w = sum(v[2] for v in votes)
+    fake_w = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "FAKE")
+    real_w = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "REAL")
+
+    verdict = "FAKE" if fake_w > real_w else "REAL"
+    base = max(fake_w, real_w)
+
+    fake_c = sum(1 for v in votes if v[0] == "FAKE")
+    agree = max(fake_c, len(votes) - fake_c) / len(votes)
+    if agree >= 0.8:
+        confidence = min(round(base * 1.05), 99)
+    elif agree >= 0.6:
+        confidence = min(round(base), 95)
+    else:
+        confidence = min(round(base * 0.9), 85)
+    confidence = max(confidence, 51)
+
+    indicators = h["indicators"]
+    category = h["category"]
+    analysis = generate_analysis_text(verdict, confidence, indicators, engines_used)
+
+    # Fire-and-forget Supabase store (don't block response)
+    async def _store():
+        try:
+            sb = get_supabase()
+            sb.table("analyses").insert({
+                "input_text": text[:500],
+                "verdict": verdict,
+                "confidence": confidence,
+                "analysis": analysis,
+                "indicators": indicators,
+                "category": category,
+                "heuristic_score": h["heuristic_score"],
+                "is_public": True,
+            }).execute()
+        except Exception as e:
+            logger.error(f"Supabase error: {e}")
+
+    asyncio.create_task(_store())
+
+    return AnalyzeResponse(
+        id=None, verdict=verdict, confidence=confidence,
+        analysis=analysis, indicators=indicators, category=category,
+        heuristic_score=h["heuristic_score"], hf_confidence=hf_conf,
+        claimbuster_score=cb_score, claimbuster_checkworthy=cb_check,
+        google_factcheck_found=gfc_found, google_factcheck_rating=gfc_rating,
+        google_factcheck_claims=gfc_claims,
+        engines_used=engines_used,
+        ensemble_method=f"ensemble_{len(engines_used)}_engines",
+        source_type=source_type,
+    )
 
 
 @router.post("/api/analyze", response_model=AnalyzeResponse)
-async def analyze_article(req: AnalyzeRequest):
-    """Analyze text for fake news using ensemble of ML + heuristics."""
-    text = req.text
+async def analyze_text(req: AnalyzeRequest):
+    """Analyze text for fake news using multi-engine ensemble."""
+    return await run_ensemble(req.text, "text")
 
-    # 1. Run heuristic analysis
-    heuristic_result = heuristic_analyze(text)
-    if not heuristic_result:
-        raise HTTPException(status_code=400, detail="Analysis failed")
 
-    # 2. Run ML model
-    ml_classifier = get_classifier()
-    ml_result = ml_classifier.predict(text)
+@router.post("/api/analyze/file", response_model=AnalyzeResponse)
+async def analyze_file(file: UploadFile = File(...)):
+    """Upload PDF, DOCX, or TXT for fake news analysis."""
+    ext = file.filename.lower().rsplit(".", 1)[-1] if "." in file.filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, f"Unsupported file type '.{ext}'. Use PDF, DOCX, or TXT.")
 
-    # 3. Ensemble: combine ML (60%) + heuristic (40%)
-    if ml_result:
-        ml_fake = ml_result["verdict"] == "FAKE"
-        h_fake = heuristic_result["verdict"] == "FAKE"
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(400, "File too large. Maximum 5MB.")
+    if not content:
+        raise HTTPException(400, "File is empty.")
 
-        ml_conf = ml_result["confidence"]
-        h_conf = heuristic_result["confidence"]
+    text = extract_text(file.filename, content)
+    if not text or not text.strip():
+        raise HTTPException(400, "Could not extract text from this file.")
 
-        if ml_fake == h_fake:
-            # Agree — use weighted average confidence
-            verdict = "FAKE" if ml_fake else "REAL"
-            confidence = min(round(ml_conf * 0.6 + h_conf * 0.4), 99)
-        else:
-            # Disagree — trust ML more but cap confidence
-            if ml_conf > h_conf + 15:
-                verdict = ml_result["verdict"]
-                confidence = min(round(ml_conf * 0.55 + h_conf * 0.2), 85)
-            else:
-                verdict = heuristic_result["verdict"]
-                confidence = min(round(h_conf * 0.55 + ml_conf * 0.2), 80)
+    is_valid, reason = is_meaningful_content(text)
+    if not is_valid:
+        raise HTTPException(422, reason)
 
-        ml_confidence = ml_result["confidence"]
-    else:
-        # ML not available — use heuristic only
-        verdict = heuristic_result["verdict"]
-        confidence = heuristic_result["confidence"]
-        ml_confidence = None
-
-    indicators = heuristic_result["indicators"]
-    category = heuristic_result["category"]
-    analysis = generate_analysis_text(verdict, confidence, indicators)
-
-    # 4. Store in Supabase
-    stored_id = None
-    try:
-        sb = get_supabase()
-        resp = sb.table("analyses").insert({
-            "input_text": text,
-            "verdict": verdict,
-            "confidence": confidence,
-            "analysis": analysis,
-            "indicators": indicators,
-            "category": category,
-            "heuristic_score": heuristic_result["heuristic_score"],
-            "llm_verdict": ml_result["verdict"] if ml_result else None,
-            "is_public": True,
-        }).execute()
-
-        if resp.data:
-            stored_id = resp.data[0]["id"]
-    except Exception as e:
-        logger.error(f"Supabase insert error: {e}")
-
-    return AnalyzeResponse(
-        id=stored_id,
-        verdict=verdict,
-        confidence=confidence,
-        analysis=analysis,
-        indicators=indicators,
-        category=category,
-        heuristic_score=heuristic_result["heuristic_score"],
-        ml_confidence=ml_confidence,
-        ensemble_method="heuristic+ml" if ml_result else "heuristic_only",
-    )
+    return await run_ensemble(text[:5000].strip(), f"file:{ext}")

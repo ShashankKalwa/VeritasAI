@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
 
+const ENGINE_LABELS = {
+  heuristic_nlp: '🔍 Heuristic NLP',
+  huggingface_bert: '🤗 HuggingFace BERT',
+  claimbuster_deberta: '🔎 ClaimBuster DeBERTa',
+  google_factcheck: '✅ Google Fact Check',
+};
+
 export default function ResultCard({ result }) {
   const [visible, setVisible] = useState(false);
   const [barWidth, setBarWidth] = useState(0);
@@ -16,10 +23,8 @@ export default function ResultCard({ result }) {
   const isFake = result.verdict === 'FAKE';
 
   const handleShare = () => {
-    const shareText = `VeritasAI Analysis: ${result.verdict} (${result.confidence}% confidence)\n\n"${result.input_text || ''}"\n\n${result.analysis}`;
-    navigator.clipboard.writeText(shareText).then(() => {
-      alert('Result copied to clipboard!');
-    });
+    const shareText = `VeritasAI: ${result.verdict} (${result.confidence}%)\n\n${result.analysis}`;
+    navigator.clipboard.writeText(shareText).then(() => alert('Copied to clipboard!'));
   };
 
   return (
@@ -44,6 +49,20 @@ export default function ResultCard({ result }) {
         </div>
       </div>
 
+      {/* Engines Used */}
+      {result.engines_used && result.engines_used.length > 0 && (
+        <div className="result-engines">
+          <h4>Detection Engines ({result.engines_used.length})</h4>
+          <div className="engine-badges">
+            {result.engines_used.map((engine, i) => (
+              <span key={i} className="engine-badge">
+                {ENGINE_LABELS[engine] || engine}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="result-analysis">
         <h4>Analysis</h4>
         <p>{result.analysis}</p>
@@ -52,13 +71,48 @@ export default function ResultCard({ result }) {
       <div className="result-indicators">
         <h4>Key Indicators</h4>
         <div className="indicator-pills">
-          {result.indicators.map((indicator, i) => (
+          {result.indicators && result.indicators.map((indicator, i) => (
             <span key={i} className={`indicator-pill ${isFake ? 'indicator-fake' : 'indicator-real'}`}>
               {indicator}
             </span>
           ))}
         </div>
       </div>
+
+      {/* Google Fact Check Results */}
+      {result.google_factcheck_found && result.google_factcheck_claims && (
+        <div className="fact-check-section">
+          <h4>🔍 Existing Fact-Checks Found</h4>
+          {result.google_factcheck_rating && (
+            <div className="fact-check-item">
+              <span className="fc-label">Overall Rating:</span>
+              <span className={`fc-value ${result.google_factcheck_rating === 'DEBUNKED' ? 'fc-suspicious' : 'fc-ok'}`}>
+                {result.google_factcheck_rating}
+              </span>
+            </div>
+          )}
+          {result.google_factcheck_claims.map((claim, i) => (
+            <div key={i} className="fact-check-item">
+              <span className="fc-label">{claim.publisher}:</span>
+              <span className="fc-value">{claim.rating}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ClaimBuster Score */}
+      {result.claimbuster_score != null && (
+        <div className="fact-check-section">
+          <h4>🔎 Claim Analysis</h4>
+          <div className="fact-check-item">
+            <span className="fc-label">Check-worthiness:</span>
+            <span className={`fc-value ${result.claimbuster_checkworthy ? 'fc-suspicious' : 'fc-ok'}`}>
+              {(result.claimbuster_score * 100).toFixed(1)}%
+              {result.claimbuster_checkworthy ? ' — Needs verification' : ' — Low priority'}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="result-footer">
         <button className="btn-share" onClick={handleShare}>
@@ -67,9 +121,11 @@ export default function ResultCard({ result }) {
             <polyline points="16 6 12 2 8 6"/>
             <line x1="12" y1="2" x2="12" y2="15"/>
           </svg>
-          Share Result
+          Share
         </button>
-        <span className="result-score">Heuristic Score: {result.heuristic_score}</span>
+        <span className="result-score">
+          {result.engines_used?.length || 1} engines · {result.source_type || 'text'}
+        </span>
       </div>
     </div>
   );

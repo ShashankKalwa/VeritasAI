@@ -26,3 +26,10 @@ dist-ssr
 .env
 backend/.env
 frontend/.env
+backend/venv/
+backend/__pycache__/
+backend/lib/__pycache__/
+backend/routes/__pycache__/
+__pycache__/
+*.pyc
+
