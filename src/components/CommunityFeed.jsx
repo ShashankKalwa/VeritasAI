@@ -79,8 +79,14 @@ export default function CommunityFeed() {
           {analyses.map((item) => (
             <div key={item.id} className="feed-item">
               <div className="feed-item-top">
-                <span className={`mini-badge ${item.verdict === 'FAKE' ? 'badge-fake' : 'badge-real'}`}>
-                  {item.verdict}
+                <span className={`mini-badge ${
+                  item.verdict === 'FAKE' ? 'badge-fake' :
+                  item.verdict === 'MISLEADING' ? 'badge-misleading' :
+                  item.verdict === 'PARTIALLY_TRUE' ? 'badge-partial' :
+                  item.verdict === 'UNCERTAIN' ? 'badge-uncertain' :
+                  'badge-real'
+                }`}>
+                  {item.verdict === 'PARTIALLY_TRUE' ? 'PARTIAL' : item.verdict}
                 </span>
                 <span className="feed-confidence">{item.confidence}%</span>
               </div>

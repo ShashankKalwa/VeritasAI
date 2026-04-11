@@ -1,3 +1,8 @@
+"""
+VeritasAI Ensemble Analysis Engine v2.0
+Multi-engine convergence scoring with 5-label verdict taxonomy.
+Implements false-positive prevention rules from master system prompt.
+"""
 import re
 import random
 import logging
@@ -14,6 +19,9 @@ router = APIRouter()
 
 MAX_FILE_SIZE = 5 * 1024 * 1024
 ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt", "text", "md"}
+
+# 5-label verdict taxonomy
+VERDICTS = ["REAL", "PARTIALLY_TRUE", "MISLEADING", "FAKE", "UNCERTAIN"]
 
 
 class AnalyzeRequest(BaseModel):
@@ -37,6 +45,7 @@ class AnalyzeResponse(BaseModel):
     analysis: str
     indicators: list[str]
     category: str
+    content_type: str = "HARD_NEWS"
     heuristic_score: float
     hf_confidence: int | None = None
     claimbuster_score: float | None = None
@@ -47,22 +56,37 @@ class AnalyzeResponse(BaseModel):
     engines_used: list[str] = []
     ensemble_method: str = "multi_engine"
     source_type: str = "text"
+    convergence_signals: int = 0
 
 
-def generate_analysis_text(verdict, confidence, indicators, engines):
+def generate_analysis_text(verdict, confidence, indicators, engines, content_type):
     ind_text = ", ".join(indicators[:3]).lower() if indicators else "general pattern analysis"
     n = len(engines)
+
     if verdict == "FAKE":
         return random.choice([
-            f"Multi-engine analysis ({n} engines) reveals significant misinformation patterns with {confidence}% confidence. Key red flags: {ind_text}.",
-            f"Ensemble of {n} AI engines flags this as likely misinformation ({confidence}% confidence). Detected {ind_text}.",
-            f"Cross-referenced across {n} engines — multiple fake news indicators found. {ind_text.capitalize()} strongly suggest misleading content ({confidence}%).",
+            f"Multi-engine analysis ({n} engines) identifies significant misinformation patterns with {confidence}% confidence. Multiple converging signals: {ind_text}.",
+            f"Cross-referenced across {n} engines — provably false claims detected. {ind_text.capitalize()} confirm fabricated content ({confidence}%).",
         ])
-    else:
+    elif verdict == "MISLEADING":
         return random.choice([
-            f"Multi-engine verification ({n} engines) confirms legitimate reporting with {confidence}% confidence. Positive signals: {ind_text}.",
-            f"Ensemble of {n} AI engines validates this content ({confidence}% confidence). {ind_text.capitalize()} match credible journalism.",
-            f"Cross-referenced across {n} engines — credibility markers detected. {ind_text.capitalize()} support authenticity ({confidence}%).",
+            f"Analysis across {n} engines found potentially misleading framing ({confidence}% confidence). Key concerns: {ind_text}.",
+            f"Ensemble of {n} AI engines flags misleading patterns. Some claims require verification: {ind_text} ({confidence}%).",
+        ])
+    elif verdict == "PARTIALLY_TRUE":
+        return random.choice([
+            f"Multi-engine review ({n} engines) finds mixed signals ({confidence}% confidence). Some claims verifiable, others uncertain: {ind_text}.",
+            f"Ensemble of {n} engines detects a mix of credible and questionable elements: {ind_text} ({confidence}%).",
+        ])
+    elif verdict == "UNCERTAIN":
+        return f"Analysis across {n} engines produced inconclusive results ({confidence}% confidence). Insufficient evidence for definitive classification. Key signals: {ind_text}."
+    else:  # REAL
+        ct_note = ""
+        if content_type == "BREAKING":
+            ct_note = " Content identified as breaking news — appropriate tolerance applied."
+        return random.choice([
+            f"Multi-engine verification ({n} engines) confirms credible reporting with {confidence}% confidence. Positive signals: {ind_text}.{ct_note}",
+            f"Ensemble of {n} AI engines validates this content ({confidence}% confidence). {ind_text.capitalize()} match legitimate journalism.{ct_note}",
         ])
 
 
@@ -91,39 +115,45 @@ async def _safe_gfc(text):
 
 
 async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
-    """Core ensemble detection logic — all engines run in PARALLEL."""
+    """
+    Core ensemble detection logic — all engines run in PARALLEL.
+    Implements multi-signal convergence (rule_FP_01) and 5-label taxonomy.
+    """
     engines_used = []
-    votes = []
 
-    # Engine 1: Heuristic NLP (instant, always available)
+    # ── Engine 1: Heuristic NLP (instant, always available) ──
     h = heuristic_analyze(text)
     if not h:
         raise HTTPException(400, "Text too short for analysis")
     engines_used.append("heuristic_nlp")
-    votes.append(("FAKE" if h["verdict"] == "FAKE" else "REAL", h["confidence"], 0.30))
+    content_type = h.get("content_type", "HARD_NEWS")
 
-    # Engines 2-4: Run ALL in parallel (max 4s timeout)
+    # ── Engines 2-4: Run ALL in parallel ──
     hf_result, cb_result, gfc_result = await asyncio.gather(
         _safe_hf(text), _safe_cb(text), _safe_gfc(text)
     )
 
-    # Process HF BERT result
+    # ── Collect engine verdicts ──
+    # Each vote: (verdict, confidence, weight, engine_name)
+    votes = []
+    votes.append((h["verdict"], h["confidence"], 0.30, "heuristic"))
+
     hf_conf = None
     if hf_result:
         engines_used.append("huggingface_bert")
         hf_conf = hf_result["confidence"]
-        votes.append((hf_result["verdict"], hf_result["confidence"], 0.35))
+        votes.append((hf_result["verdict"], hf_result["confidence"], 0.35, "bert"))
 
-    # Process ClaimBuster result
     cb_score, cb_check = None, None
     if cb_result:
         engines_used.append("claimbuster_deberta")
         cb_score = cb_result["cfs_score"]
         cb_check = cb_result["is_checkworthy"]
-        if cb_result["is_checkworthy"]:
-            votes.append(("FAKE", min(round(cb_result["cfs_score"] * 80), 80), 0.15))
+        # ClaimBuster measures check-worthiness, not directly FAKE
+        # Only adds a weak MISLEADING signal if highly check-worthy
+        if cb_result["is_checkworthy"] and cb_result["cfs_score"] > 0.7:
+            votes.append(("MISLEADING", min(round(cb_result["cfs_score"] * 70), 75), 0.10, "claimbuster"))
 
-    # Process Google Fact Check result
     gfc_found, gfc_rating, gfc_claims = None, None, None
     if gfc_result:
         engines_used.append("google_factcheck")
@@ -132,36 +162,77 @@ async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
         gfc_claims = gfc_result.get("claims", [])[:3]
         if gfc_result.get("found") and gfc_result.get("overall_rating"):
             if gfc_result["overall_rating"] == "DEBUNKED":
-                votes.append(("FAKE", 90, 0.20))
+                votes.append(("FAKE", 90, 0.25, "google_fc"))
             elif gfc_result["overall_rating"] == "VERIFIED":
-                votes.append(("REAL", 90, 0.20))
+                votes.append(("REAL", 90, 0.25, "google_fc"))
 
-    # Ensemble merge
     if not votes:
         raise HTTPException(500, "No detection engines available")
 
+    # ── MULTI-SIGNAL CONVERGENCE GATE (rule_FP_01) ──
+    # Count how many engines lean negative (FAKE, MISLEADING, PARTIALLY_TRUE)
+    negative_votes = [v for v in votes if v[0] in ("FAKE", "MISLEADING")]
+    real_votes = [v for v in votes if v[0] == "REAL"]
+    uncertain_votes = [v for v in votes if v[0] in ("UNCERTAIN", "PARTIALLY_TRUE")]
+
     total_w = sum(v[2] for v in votes)
-    fake_w = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "FAKE")
-    real_w = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "REAL")
 
-    verdict = "FAKE" if fake_w > real_w else "REAL"
-    base = max(fake_w, real_w)
+    # Compute weighted scores per verdict direction
+    fake_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "FAKE")
+    misleading_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "MISLEADING")
+    real_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "REAL")
+    uncertain_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] in ("UNCERTAIN", "PARTIALLY_TRUE"))
 
-    fake_c = sum(1 for v in votes if v[0] == "FAKE")
-    agree = max(fake_c, len(votes) - fake_c) / len(votes)
-    if agree >= 0.8:
-        confidence = min(round(base * 1.05), 99)
-    elif agree >= 0.6:
-        confidence = min(round(base), 95)
+    negative_total = fake_weighted + misleading_weighted * 0.6
+    positive_total = real_weighted
+
+    # ── APPLY CONVERGENCE RULES ──
+    convergence_signals = len(negative_votes)
+
+    # FAKE requires ≥2 engines agreeing + strong signal
+    if len([v for v in votes if v[0] == "FAKE"]) >= 2 and negative_total > positive_total * 1.3:
+        verdict = "FAKE"
+        confidence = min(round(negative_total * 1.05), 99)
+    elif fake_weighted > 0 and len([v for v in votes if v[0] == "FAKE"]) == 1 and negative_total > positive_total:
+        # Only 1 engine says FAKE — downgrade to MISLEADING (rule_FP_01)
+        verdict = "MISLEADING"
+        confidence = min(round(negative_total * 0.85), 80)
+    elif negative_total > positive_total and convergence_signals >= 1:
+        verdict = "MISLEADING" if negative_total > 40 else "PARTIALLY_TRUE"
+        confidence = min(round(max(negative_total, positive_total)), 80)
+    elif positive_total > negative_total:
+        verdict = "REAL"
+        base = positive_total
+        # Agreement bonus
+        agree_pct = len(real_votes) / len(votes)
+        if agree_pct >= 0.7:
+            confidence = min(round(base * 1.08), 99)
+        elif agree_pct >= 0.5:
+            confidence = min(round(base), 95)
+        else:
+            confidence = min(round(base * 0.92), 88)
+        confidence = max(confidence, 55)
     else:
-        confidence = min(round(base * 0.9), 85)
-    confidence = max(confidence, 51)
+        # Tied or ambiguous — prefer UNCERTAIN (rule_FP_06)
+        verdict = "UNCERTAIN"
+        confidence = 50
+
+    # ── FINAL SAFEGUARDS ──
+    # If Google Fact Check found VERIFIED claims, override toward REAL
+    if gfc_rating == "VERIFIED" and verdict in ("MISLEADING", "PARTIALLY_TRUE", "UNCERTAIN"):
+        verdict = "REAL"
+        confidence = max(confidence, 75)
+
+    # If Google Fact Check found DEBUNKED, ensure at least MISLEADING
+    if gfc_rating == "DEBUNKED" and verdict == "REAL":
+        verdict = "PARTIALLY_TRUE"
+        confidence = min(confidence, 70)
 
     indicators = h["indicators"]
     category = h["category"]
-    analysis = generate_analysis_text(verdict, confidence, indicators, engines_used)
+    analysis = generate_analysis_text(verdict, confidence, indicators, engines_used, content_type)
 
-    # Fire-and-forget Supabase store (don't block response)
+    # Fire-and-forget Supabase store
     async def _store():
         try:
             sb = get_supabase()
@@ -183,6 +254,7 @@ async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
     return AnalyzeResponse(
         id=None, verdict=verdict, confidence=confidence,
         analysis=analysis, indicators=indicators, category=category,
+        content_type=content_type,
         heuristic_score=h["heuristic_score"], hf_confidence=hf_conf,
         claimbuster_score=cb_score, claimbuster_checkworthy=cb_check,
         google_factcheck_found=gfc_found, google_factcheck_rating=gfc_rating,
@@ -190,6 +262,7 @@ async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
         engines_used=engines_used,
         ensemble_method=f"ensemble_{len(engines_used)}_engines",
         source_type=source_type,
+        convergence_signals=convergence_signals,
     )
 
 

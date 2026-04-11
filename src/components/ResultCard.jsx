@@ -7,12 +7,29 @@ const ENGINE_LABELS = {
   google_factcheck: '✅ Google Fact Check',
 };
 
+const VERDICT_CONFIG = {
+  REAL: { icon: '✓', label: 'VERIFIED REAL', cssClass: 'result-real', badgeClass: 'badge-real', barClass: 'bar-real' },
+  PARTIALLY_TRUE: { icon: '◐', label: 'PARTIALLY TRUE', cssClass: 'result-partial', badgeClass: 'badge-partial', barClass: 'bar-partial' },
+  MISLEADING: { icon: '⚠', label: 'MISLEADING', cssClass: 'result-misleading', badgeClass: 'badge-misleading', barClass: 'bar-misleading' },
+  FAKE: { icon: '✕', label: 'FAKE', cssClass: 'result-fake', badgeClass: 'badge-fake', barClass: 'bar-fake' },
+  UNCERTAIN: { icon: '?', label: 'UNCERTAIN', cssClass: 'result-uncertain', badgeClass: 'badge-uncertain', barClass: 'bar-uncertain' },
+};
+
+const CONTENT_TYPE_LABELS = {
+  HARD_NEWS: 'Hard News',
+  BREAKING: '⚡ Breaking News',
+  OPINION: '💬 Opinion',
+  SATIRE: '🎭 Satire',
+};
+
 export default function ResultCard({ result }) {
   const [visible, setVisible] = useState(false);
   const [barWidth, setBarWidth] = useState(0);
 
   useEffect(() => {
     if (result) {
+      setVisible(false);
+      setBarWidth(0);
       setTimeout(() => setVisible(true), 50);
       setTimeout(() => setBarWidth(result.confidence), 200);
     }
@@ -20,20 +37,25 @@ export default function ResultCard({ result }) {
 
   if (!result) return null;
 
-  const isFake = result.verdict === 'FAKE';
+  const cfg = VERDICT_CONFIG[result.verdict] || VERDICT_CONFIG.UNCERTAIN;
 
   const handleShare = () => {
-    const shareText = `VeritasAI: ${result.verdict} (${result.confidence}%)\n\n${result.analysis}`;
+    const shareText = `VeritasAI: ${cfg.label} (${result.confidence}%)\n\n${result.analysis}`;
     navigator.clipboard.writeText(shareText).then(() => alert('Copied to clipboard!'));
   };
 
   return (
-    <div className={`result-card ${visible ? 'visible' : ''} ${isFake ? 'result-fake' : 'result-real'}`}>
+    <div className={`result-card ${visible ? 'visible' : ''} ${cfg.cssClass}`}>
       <div className="result-header">
-        <div className={`verdict-badge ${isFake ? 'badge-fake' : 'badge-real'}`}>
-          {isFake ? '⚠' : '✓'} {result.verdict}
+        <div className={`verdict-badge ${cfg.badgeClass}`}>
+          {cfg.icon} {cfg.label}
         </div>
-        <span className="result-category">{result.category}</span>
+        <div className="result-meta">
+          <span className="result-category">{result.category}</span>
+          {result.content_type && result.content_type !== 'HARD_NEWS' && (
+            <span className="content-type-tag">{CONTENT_TYPE_LABELS[result.content_type] || result.content_type}</span>
+          )}
+        </div>
       </div>
 
       <div className="confidence-section">
@@ -43,7 +65,7 @@ export default function ResultCard({ result }) {
         </div>
         <div className="confidence-bar-bg">
           <div
-            className={`confidence-bar-fill ${isFake ? 'bar-fake' : 'bar-real'}`}
+            className={`confidence-bar-fill ${cfg.barClass}`}
             style={{ width: `${barWidth}%` }}
           />
         </div>
@@ -72,7 +94,7 @@ export default function ResultCard({ result }) {
         <h4>Key Indicators</h4>
         <div className="indicator-pills">
           {result.indicators && result.indicators.map((indicator, i) => (
-            <span key={i} className={`indicator-pill ${isFake ? 'indicator-fake' : 'indicator-real'}`}>
+            <span key={i} className={`indicator-pill indicator-${result.verdict === 'REAL' ? 'real' : result.verdict === 'FAKE' ? 'fake' : 'neutral'}`}>
               {indicator}
             </span>
           ))}
@@ -125,6 +147,7 @@ export default function ResultCard({ result }) {
         </button>
         <span className="result-score">
           {result.engines_used?.length || 1} engines · {result.source_type || 'text'}
+          {result.convergence_signals > 0 && ` · ${result.convergence_signals} signals`}
         </span>
       </div>
     </div>

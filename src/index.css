@@ -651,11 +651,29 @@ h1, h2, h3 {
   border-left: 3px solid var(--accent-green);
 }
 
+.result-card.result-misleading {
+  border-left: 3px solid #f59e0b;
+}
+
+.result-card.result-partial {
+  border-left: 3px solid #d97706;
+}
+
+.result-card.result-uncertain {
+  border-left: 3px solid #6b7280;
+}
+
 .result-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1.25rem;
+}
+
+.result-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .verdict-badge {
@@ -677,6 +695,34 @@ h1, h2, h3 {
   background: var(--accent-green-glow);
   color: #86efac;
   border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+.badge-misleading {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-partial {
+  background: rgba(217, 119, 6, 0.15);
+  color: #fcd34d;
+  border: 1px solid rgba(217, 119, 6, 0.3);
+}
+
+.badge-uncertain {
+  background: rgba(107, 114, 128, 0.15);
+  color: #d1d5db;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.content-type-tag {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--accent-blue);
+  padding: 3px 8px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 4px;
 }
 
 .result-category {
@@ -730,6 +776,21 @@ h1, h2, h3 {
 .bar-real {
   background: linear-gradient(90deg, var(--accent-green), #22c55e);
   box-shadow: 0 0 12px rgba(22, 163, 74, 0.4);
+}
+
+.bar-misleading {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
+.bar-partial {
+  background: linear-gradient(90deg, #d97706, #f59e0b);
+  box-shadow: 0 0 12px rgba(217, 119, 6, 0.4);
+}
+
+.bar-uncertain {
+  background: linear-gradient(90deg, #6b7280, #9ca3af);
+  box-shadow: 0 0 12px rgba(107, 114, 128, 0.3);
 }
 
 .result-analysis {
@@ -845,6 +906,12 @@ h1, h2, h3 {
   border-color: rgba(22, 163, 74, 0.3);
   color: #86efac;
   background: rgba(22, 163, 74, 0.08);
+}
+
+.indicator-neutral {
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.08);
 }
 
 .result-footer {
