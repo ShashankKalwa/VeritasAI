@@ -54,8 +54,7 @@ FAKE_MEDIUM = [
 FAKE_LINGUISTIC = [
     Signal(re.compile(r"!!!|!{2,}"), 6, "Excessive punctuation"),
     Signal(re.compile(r"\b(100|1000)\s*%"), 5, "Extreme percentage claim"),
-    Signal(re.compile(r"\b(every|all|entire|always|never|no one)\b", re.I), 3, "Absolute language"),
-    Signal(re.compile(r"\b(destroy|obliterate|annihilate|devastating)\b", re.I), 4, "Extreme action language"),
+    Signal(re.compile(r"\b(destroy|obliterate|annihilate)\b", re.I), 4, "Extreme action language"),
     Signal(re.compile(r"(aliens?|extraterrestrial|ufo)\b", re.I), 8, "Extraterrestrial claim"),
     Signal(re.compile(r"\bconspiracy\b", re.I), 5, "Conspiracy reference"),
     Signal(re.compile(r"\bhoax\b", re.I), 6, "Hoax allegation"),
@@ -80,6 +79,18 @@ REAL_SIGNALS = [
     Signal(re.compile(r"voted?\s+\d+-\d+", re.I), -8, "Specific vote count"),
     Signal(re.compile(r"\$\d+[\.\d]*\s*(billion|million|trillion)", re.I), -7, "Specific financial figure"),
     Signal(re.compile(r"regulation|legislation|amendment|bill", re.I), -5, "Legal/regulatory language"),
+    # Common legitimate news patterns
+    Signal(re.compile(r"\b(announce|announced|announces)\b", re.I), -6, "Official announcement language"),
+    Signal(re.compile(r"\b(upgrade|improve|develop|launch|introduce|plan|report)s?\b", re.I), -5, "Constructive action language"),
+    Signal(re.compile(r"\b(government|ministry|official|authority|agency)\b", re.I), -5, "Government institution reference"),
+    Signal(re.compile(r"\b(safety|infrastructure|system|platform|service)\b", re.I), -4, "Infrastructure/service language"),
+    Signal(re.compile(r"\b(global|international|nationwide|regional|country|countries)\b", re.I), -3, "Geographic scope language"),
+    Signal(re.compile(r"\b(startup|tech|technology|digital|AI|software)\b", re.I), -4, "Technology sector language"),
+    Signal(re.compile(r"\b(record|temperature|climate|weather|heatwave|flood|storm)\b", re.I), -4, "Climate/weather reporting"),
+    Signal(re.compile(r"\b(railway|road|highway|airport|transport)\b", re.I), -4, "Transport infrastructure language"),
+    Signal(re.compile(r"\b(battery|energy|power|charge|renewable|solar)\b", re.I), -4, "Energy technology language"),
+    Signal(re.compile(r"\b(outage|downtime|disruption|restore|recover)\b", re.I), -3, "Service disruption reporting"),
+    Signal(re.compile(r"\b(social\s+media|platform|app|facebook|instagram|twitter|whatsapp)\b", re.I), -4, "Social media reference"),
 ]
 
 CATEGORY_PATTERNS = {
@@ -139,20 +150,21 @@ def heuristic_analyze(text: str) -> dict:
     max_score = 60.0
     normalized = max(min(total_score / max_score, 1.0), -1.0)
 
-    if normalized > 0.05:
+    if normalized > 0.15:
         verdict = "FAKE"
         confidence = min(round(50 + normalized * 50), 99)
     elif normalized < -0.05:
         verdict = "REAL"
         confidence = min(round(50 + abs(normalized) * 50), 99)
     else:
-        has_reporting = bool(re.search(r"\b(said|reported|according|announced|confirmed)\b", text, re.I))
+        # Neutral or ambiguous — lean REAL (benefit of the doubt)
+        has_reporting = bool(re.search(r"\b(said|reported|according|announced|confirmed|update|plan|launch|introduce|develop|improve|upgrade|affect|face|break)\b", text, re.I))
         if has_reporting:
             verdict = "REAL"
-            confidence = 58
+            confidence = 62
         else:
-            verdict = "FAKE"
-            confidence = 57
+            verdict = "REAL"
+            confidence = 55
 
     category = detect_category(text)
 
