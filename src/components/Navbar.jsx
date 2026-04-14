@@ -18,8 +18,8 @@ export default function Navbar({ onLoginClick }) {
   return (
     <nav className="navbar">
       <div className="navbar-inner">
-        <Link to="/" className="navbar-logo">
-          <span className="logo-v">V</span>eritasAI
+        <Link to="/" className="navbar-logo" style={{ color: '#fafafa' }}>
+          Veritas<span style={{ color: '#f87171' }}>AI</span>
         </Link>
 
         <div className="navbar-live">

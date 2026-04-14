@@ -51,7 +51,9 @@ export default function ArticleInput({ onAnalyze, loading }) {
 
   return (
     <div className="article-input-container">
-      <h1 className="hero-title">VeritasAI</h1>
+      <h1 className="hero-title">
+        Veritas<span style={{ WebkitTextFillColor: '#f87171', color: '#f87171' }}>AI</span>
+      </h1>
       <p className="hero-subtitle">
         Multi-engine AI fake news detection. Paste text or upload a document for instant analysis.
       </p>

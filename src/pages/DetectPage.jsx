@@ -4,7 +4,7 @@ import ResultCard from '../components/ResultCard';
 import CommunityFeed from '../components/CommunityFeed';
 import { analyzeArticle } from '../lib/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL;// || 'http://localhost:8000';
 
 export default function DetectPage() {
   const [result, setResult] = useState(null);
