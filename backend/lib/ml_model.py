@@ -13,7 +13,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 HF_FAKE_NEWS_MODEL = "jy46604790/Fake-News-Bert-Detect"
-HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
+HF_BASE_URL = "https://api-inference.huggingface.co/models"
 GOOGLE_FACTCHECK_URL = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
 
 # Shared async client — connection pooling for speed

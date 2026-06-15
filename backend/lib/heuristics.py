@@ -38,6 +38,9 @@ FALSE_HIGH = [
     Signal(re.compile(r"hollow\s+earth", re.I), 15, "Hollow Earth pseudoscience"),
     Signal(re.compile(r"portal\s+to\s+hell", re.I), 15, "Religious conspiracy"),
     Signal(re.compile(r"microchip\s+(implant|inject|track)", re.I), 13, "Microchip conspiracy"),
+    Signal(re.compile(r"free\s+(iphone|ipad|macbook|tesla)\s+giveaway", re.I), 15, "Giveaway scam trope"),
+    Signal(re.compile(r"buys?\s+(the\s+)?(taj\s+mahal|statue\s+of\s+liberty|eiffel\s+tower|white\s+house)", re.I), 15, "Absurd landmark purchase claim"),
+    Signal(re.compile(r"teleportation\s+technology", re.I), 15, "Sci-fi technology claim"),
 ]
 
 FALSE_MEDIUM = [
@@ -57,6 +60,7 @@ SCIENCE_CONTRADICTIONS = [
     Signal(re.compile(r"invisible\s+(phone|smartphone|screen)", re.I), 12, "Impossible technology claim"),
     Signal(re.compile(r"no\s+screen", re.I), 8, "Screenless smartphone claim"),
     Signal(re.compile(r"earth\s+is\s+flat", re.I), 15, "Flat Earth claim"),
+    Signal(re.compile(r"flat\s+earth", re.I), 15, "Flat Earth claim"),
     Signal(re.compile(r"climate\s+change\s+(hoax|fake|scam|myth)", re.I), 14, "Climate denial"),
 ]
 
@@ -71,9 +75,10 @@ FALSE_LINGUISTIC = [
 # ─── CREDIBLE SIGNALS (Credibility markers) ───
 CREDIBLE_SIGNALS = [
     # Source attribution
-    Signal(re.compile(r"according\s+to\s+(reuters|ap|associated\s+press)", re.I), -12, "Major wire service attribution"),
-    Signal(re.compile(r"per\s+the\s+(fda|cdc|who|nih|epa|fbi|noaa)", re.I), -10, "Government agency attribution"),
+    Signal(re.compile(r"according\s+to\s+(reuters|ap|associated\s+press|un|united\s+nations)", re.I), -12, "Major wire service attribution"),
+    Signal(re.compile(r"per\s+the\s+(fda|cdc|who|nih|epa|fbi|noaa|un|united\s+nations)", re.I), -10, "Government agency attribution"),
     Signal(re.compile(r"(reuters|bloomberg|ap\s+news|bbc|nyt|wsj|nature|lancet|science\.org)", re.I), -10, "Credible source reference"),
+    Signal(re.compile(r"\b(un|united\s+nations|world\s+bank|imf|who)\s+(reports?|declares?|announces?)", re.I), -10, "International organization attribution"),
     Signal(re.compile(r"university\s+of|institute\s+of|department\s+of", re.I), -8, "Academic institution reference"),
     Signal(re.compile(r"(researcher|scientist|professor|dr\.)\s+(say|found|report|confirm|publish)", re.I), -9, "Expert attribution"),
     # Scientific method
@@ -205,17 +210,27 @@ def heuristic_analyze(text: str) -> dict:
 
     # ─── VERDICT COMPUTATION (5-label taxonomy) ───
     # CREDIBLE → MOSTLY_TRUE → MIXED → MOSTLY_FALSE → FALSE
-    max_score = 60.0
+    # Adjust max_score based on text length so short headlines don't get diluted
+    words = len(text.split())
+    if words < 20:
+        max_score = 30.0
+    elif words < 50:
+        max_score = 45.0
+    else:
+        max_score = 60.0
+        
     normalized = max(min(total_score / max_score, 1.0), -1.0)
 
     # Multi-signal convergence gate:
-    # FALSE requires multiple strong false signals converging
-    if normalized > 0.35 and false_signal_count >= 2:
+    # If there's a strong false signal (>10 weight), we shouldn't let generic words like "announce" dilute it completely.
+    strong_false_present = any(i["weight"] >= 12 for i in indicators if i["type"] == "false")
+
+    if (normalized > 0.30 and false_signal_count >= 2) or strong_false_present:
         verdict = "FALSE"
-        confidence = min(round(55 + normalized * 45), 99)
-    elif normalized > 0.15 and false_signal_count >= 1:
+        confidence = min(round(65 + max(normalized, 0.4) * 34), 99)
+    elif normalized > 0.10 and false_signal_count >= 1:
         verdict = "MOSTLY_FALSE"
-        confidence = min(round(50 + normalized * 40), 85)
+        confidence = min(round(50 + max(normalized, 0.3) * 40), 85)
     elif normalized > 0.05:
         verdict = "MIXED"
         confidence = min(round(50 + normalized * 30), 75)

@@ -190,22 +190,22 @@ async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
     mostly_true_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "MOSTLY_TRUE")
     mixed_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "MIXED")
 
-    negative_total = false_weighted + mostly_false_weighted * 0.6
-    positive_total = credible_weighted + mostly_true_weighted * 0.6
+    negative_total = false_weighted + mostly_false_weighted * 0.8
+    positive_total = credible_weighted + mostly_true_weighted * 0.8
 
     # ── APPLY CONVERGENCE RULES ──
     convergence_signals = len(negative_votes)
 
-    # FALSE requires ≥2 engines agreeing + strong signal
+    # FALSE requires strong negative consensus
     if len([v for v in votes if v[0] == "FALSE"]) >= 2 and negative_total > positive_total * 1.3:
         verdict = "FALSE"
         confidence = min(round(negative_total * 1.05), 99)
-    elif false_weighted > 0 and len([v for v in votes if v[0] == "FALSE"]) == 1 and negative_total > positive_total:
-        # Only 1 engine says FALSE — downgrade to MOSTLY_FALSE
-        verdict = "MOSTLY_FALSE"
-        confidence = min(round(negative_total * 0.85), 80)
+    elif false_weighted > 0 and negative_total > positive_total:
+        # 1 engine says FALSE, or strong FALSE weight
+        verdict = "MOSTLY_FALSE" if negative_total < 60 else "FALSE"
+        confidence = min(round(negative_total * 0.9), 90)
     elif negative_total > positive_total and convergence_signals >= 1:
-        verdict = "MOSTLY_FALSE" if negative_total > 40 else "MIXED"
+        verdict = "MOSTLY_FALSE" if negative_total > 30 else "MIXED"
         confidence = min(round(max(negative_total, positive_total)), 80)
     elif positive_total > negative_total:
         verdict = "CREDIBLE"
@@ -220,7 +220,7 @@ async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
             confidence = min(round(base * 0.92), 88)
         confidence = max(confidence, 55)
         # If not strong enough for CREDIBLE, use MOSTLY_TRUE
-        if confidence < 70 and agree_pct < 0.5:
+        if confidence < 75 and agree_pct < 0.6:
             verdict = "MOSTLY_TRUE"
     else:
         # Tied or ambiguous
