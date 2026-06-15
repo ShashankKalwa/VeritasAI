@@ -21,7 +21,6 @@ async def get_stats():
         credible_count = sum(1 for a in analyses if a["verdict"] in ("CREDIBLE", "MOSTLY_TRUE"))
         false_count = sum(1 for a in analyses if a["verdict"] in ("FALSE", "MOSTLY_FALSE"))
         mixed_count = sum(1 for a in analyses if a["verdict"] == "MIXED")
-        insufficient_count = sum(1 for a in analyses if a["verdict"] == "INSUFFICIENT_DATA")
         avg_confidence = round(sum(a["confidence"] for a in analyses) / total) if total > 0 else 0
 
         # By category
@@ -61,7 +60,6 @@ async def get_stats():
             "credibleCount": credible_count,
             "falseCount": false_count,
             "mixedCount": mixed_count,
-            "insufficientCount": insufficient_count,
             "avgConfidence": avg_confidence,
             "byCategory": by_category,
             "confidenceBuckets": buckets,
@@ -69,4 +67,4 @@ async def get_stats():
 
     except Exception as e:
         logger.error(f"Stats error: {e}")
-        return {"total": 0, "credibleCount": 0, "falseCount": 0, "mixedCount": 0, "insufficientCount": 0, "avgConfidence": 0, "byCategory": [], "confidenceBuckets": {}}
+        return {"total": 0, "credibleCount": 0, "falseCount": 0, "mixedCount": 0, "avgConfidence": 0, "byCategory": [], "confidenceBuckets": {}}

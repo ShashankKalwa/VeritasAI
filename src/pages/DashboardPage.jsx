@@ -72,16 +72,15 @@ export default function DashboardPage() {
   };
 
   const doughnutData = {
-    labels: ['False', 'Mixed', 'Credible', 'Insufficient'],
+    labels: ['False', 'Mixed', 'Credible'],
     datasets: [{
-      data: [stats.falseCount, stats.mixedCount || 0, stats.credibleCount, stats.insufficientCount || 0],
+      data: [stats.falseCount, stats.mixedCount || 0, stats.credibleCount],
       backgroundColor: [
         'rgba(220, 38, 38, 0.8)',
         'rgba(245, 158, 11, 0.8)',
         'rgba(22, 163, 74, 0.8)',
-        'rgba(107, 114, 128, 0.6)',
       ],
-      borderColor: ['#dc2626', '#f59e0b', '#16a34a', '#6b7280'],
+      borderColor: ['#dc2626', '#f59e0b', '#16a34a'],
       borderWidth: 2,
       hoverOffset: 8,
     }],
