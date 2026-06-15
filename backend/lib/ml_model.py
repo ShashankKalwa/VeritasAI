@@ -13,7 +13,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 HF_FAKE_NEWS_MODEL = "jy46604790/Fake-News-Bert-Detect"
-HF_BASE_URL = "https://api-inference.huggingface.co/models"
+HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
 GOOGLE_FACTCHECK_URL = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
 
 # Shared async client — connection pooling for speed
@@ -23,7 +23,7 @@ _shared_client: httpx.AsyncClient | None = None
 async def _client() -> httpx.AsyncClient:
     global _shared_client
     if _shared_client is None or _shared_client.is_closed:
-        _shared_client = httpx.AsyncClient(timeout=30.0)
+        _shared_client = httpx.AsyncClient(timeout=5.0)
     return _shared_client
 
 
@@ -81,7 +81,7 @@ class HuggingFaceDetector:
             logger.warning("HF timeout")
             return None
         except Exception as e:
-            logger.error(f"HF error: {type(e).__name__} - {e}")
+            logger.error(f"HF error: {e}")
             return None
 
 
@@ -127,7 +127,7 @@ class ClaimBusterHF:
                 "engine": "claimbuster_deberta",
             }
         except Exception as e:
-            logger.error(f"ClaimBuster error: {type(e).__name__} - {e}")
+            logger.error(f"ClaimBuster error: {e}")
             return None
 
 
