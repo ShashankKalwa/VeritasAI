@@ -53,16 +53,16 @@ export default function DashboardPage() {
     labels: stats.byCategory.map(c => c.category),
     datasets: [
       {
-        label: 'Fake',
-        data: stats.byCategory.map(c => c.fake),
+        label: 'False',
+        data: stats.byCategory.map(c => c.false),
         backgroundColor: 'rgba(220, 38, 38, 0.8)',
         borderColor: '#dc2626',
         borderWidth: 1,
         borderRadius: 4,
       },
       {
-        label: 'Real',
-        data: stats.byCategory.map(c => c.real),
+        label: 'Credible',
+        data: stats.byCategory.map(c => c.credible),
         backgroundColor: 'rgba(22, 163, 74, 0.8)',
         borderColor: '#16a34a',
         borderWidth: 1,
@@ -72,11 +72,15 @@ export default function DashboardPage() {
   };
 
   const doughnutData = {
-    labels: ['Fake', 'Real'],
+    labels: ['False', 'Mixed', 'Credible'],
     datasets: [{
-      data: [stats.fakeCount, stats.realCount],
-      backgroundColor: ['rgba(220, 38, 38, 0.8)', 'rgba(22, 163, 74, 0.8)'],
-      borderColor: ['#dc2626', '#16a34a'],
+      data: [stats.falseCount, stats.mixedCount || 0, stats.credibleCount],
+      backgroundColor: [
+        'rgba(220, 38, 38, 0.8)',
+        'rgba(245, 158, 11, 0.8)',
+        'rgba(22, 163, 74, 0.8)',
+      ],
+      borderColor: ['#dc2626', '#f59e0b', '#16a34a'],
       borderWidth: 2,
       hoverOffset: 8,
     }],
@@ -143,16 +147,16 @@ export default function DashboardPage() {
           color="#3b82f6"
         />
         <MetricCard
-          title="Fake Detected"
-          value={stats.fakeCount}
-          subtitle={`${stats.total > 0 ? Math.round(stats.fakeCount / stats.total * 100) : 0}% of total`}
+          title="False Detected"
+          value={stats.falseCount}
+          subtitle={`${stats.total > 0 ? Math.round(stats.falseCount / stats.total * 100) : 0}% of total`}
           icon="⚠️"
           color="#dc2626"
         />
         <MetricCard
-          title="Real Verified"
-          value={stats.realCount}
-          subtitle={`${stats.total > 0 ? Math.round(stats.realCount / stats.total * 100) : 0}% of total`}
+          title="Credible Verified"
+          value={stats.credibleCount}
+          subtitle={`${stats.total > 0 ? Math.round(stats.credibleCount / stats.total * 100) : 0}% of total`}
           icon="✅"
           color="#16a34a"
         />
@@ -173,7 +177,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="chart-card">
-          <h3 className="chart-title">Fake vs Real Distribution</h3>
+          <h3 className="chart-title">Verdict Distribution</h3>
           <div className="chart-container doughnut-container">
             <Doughnut data={doughnutData} options={doughnutOptions} />
           </div>

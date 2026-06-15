@@ -141,9 +141,10 @@ export default function DatasetPage() {
           </div>
         </div>
         <p className="engine-card-desc">
-          All engines run in parallel and vote on the verdict. Each engine's vote is weighted by its assigned importance.
+          All engines run in parallel and vote on the verdict across a 5-point credibility spectrum: 
+          Credible → Mostly True → Mixed/Misleading → Mostly False → False. 
+          Each engine's vote is weighted by its assigned importance.
           When engines agree, confidence is boosted. When they disagree, the confidence is capped to reflect uncertainty.
-          The final verdict is determined by weighted majority voting across all available engines.
         </p>
         <div className="engine-specs">
           <h4>Weight Distribution</h4>

@@ -8,11 +8,11 @@ const ENGINE_LABELS = {
 };
 
 const VERDICT_CONFIG = {
-  REAL: { icon: '✓', label: 'VERIFIED REAL', cssClass: 'result-real', badgeClass: 'badge-real', barClass: 'bar-real' },
-  PARTIALLY_TRUE: { icon: '◐', label: 'PARTIALLY TRUE', cssClass: 'result-partial', badgeClass: 'badge-partial', barClass: 'bar-partial' },
-  MISLEADING: { icon: '⚠', label: 'MISLEADING', cssClass: 'result-misleading', badgeClass: 'badge-misleading', barClass: 'bar-misleading' },
-  FAKE: { icon: '✕', label: 'FAKE', cssClass: 'result-fake', badgeClass: 'badge-fake', barClass: 'bar-fake' },
-  UNCERTAIN: { icon: '?', label: 'UNCERTAIN', cssClass: 'result-uncertain', badgeClass: 'badge-uncertain', barClass: 'bar-uncertain' },
+  CREDIBLE: { icon: '✓', label: 'CREDIBLE', cssClass: 'result-credible', badgeClass: 'badge-credible', barClass: 'bar-credible' },
+  MOSTLY_TRUE: { icon: '◐', label: 'MOSTLY TRUE', cssClass: 'result-mostly-true', badgeClass: 'badge-mostly-true', barClass: 'bar-mostly-true' },
+  MIXED: { icon: '⚠', label: 'MIXED / MISLEADING', cssClass: 'result-mixed', badgeClass: 'badge-mixed', barClass: 'bar-mixed' },
+  MOSTLY_FALSE: { icon: '✕', label: 'MOSTLY FALSE', cssClass: 'result-mostly-false', badgeClass: 'badge-mostly-false', barClass: 'bar-mostly-false' },
+  FALSE: { icon: '✕', label: 'FALSE', cssClass: 'result-false', badgeClass: 'badge-false', barClass: 'bar-false' },
 };
 
 const CONTENT_TYPE_LABELS = {
@@ -37,7 +37,7 @@ export default function ResultCard({ result }) {
 
   if (!result) return null;
 
-  const cfg = VERDICT_CONFIG[result.verdict] || VERDICT_CONFIG.UNCERTAIN;
+  const cfg = VERDICT_CONFIG[result.verdict] || VERDICT_CONFIG.MIXED;
 
   const handleShare = () => {
     const shareText = `VeritasAI: ${cfg.label} (${result.confidence}%)\n\n${result.analysis}`;
@@ -94,7 +94,10 @@ export default function ResultCard({ result }) {
         <h4>Key Indicators</h4>
         <div className="indicator-pills">
           {result.indicators && result.indicators.map((indicator, i) => (
-            <span key={i} className={`indicator-pill indicator-${result.verdict === 'REAL' ? 'real' : result.verdict === 'FAKE' ? 'fake' : 'neutral'}`}>
+            <span key={i} className={`indicator-pill indicator-${
+              result.verdict === 'CREDIBLE' || result.verdict === 'MOSTLY_TRUE' ? 'credible' :
+              result.verdict === 'FALSE' || result.verdict === 'MOSTLY_FALSE' ? 'false' : 'neutral'
+            }`}>
               {indicator}
             </span>
           ))}

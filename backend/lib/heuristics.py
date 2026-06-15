@@ -1,7 +1,8 @@
 """
-VeritasAI Heuristic Fake News Detection Engine v2.0
+VeritasAI Heuristic Fake News Detection Engine v3.0
 Content-type pre-classification + 5-label taxonomy + multi-signal analysis.
-Implements false-positive prevention rules from master system prompt.
+
+Labels: CREDIBLE → MOSTLY_TRUE → MIXED → MOSTLY_FALSE → FALSE
 """
 import re
 from dataclasses import dataclass
@@ -12,8 +13,8 @@ class Signal:
     weight: int
     label: str
 
-# ─── FAKE SIGNALS (Conspiracy / Pseudoscience / Manipulation) ───
-FAKE_HIGH = [
+# ─── FALSE SIGNALS (Conspiracy / Pseudoscience / Manipulation) ───
+FALSE_HIGH = [
     Signal(re.compile(r"they\s+don'?t\s+want\s+you\s+to\s+know", re.I), 15, "Conspiracy framing"),
     Signal(re.compile(r"mainstream\s+media\s+(hiding|silent|refusing|won'?t)", re.I), 14, "Media conspiracy claim"),
     Signal(re.compile(r"secret(ly)?\s+(government|cabal|plan|document)", re.I), 13, "Secret government action"),
@@ -39,7 +40,7 @@ FAKE_HIGH = [
     Signal(re.compile(r"microchip\s+(implant|inject|track)", re.I), 13, "Microchip conspiracy"),
 ]
 
-FAKE_MEDIUM = [
+FALSE_MEDIUM = [
     Signal(re.compile(r"insider\s+reveals?", re.I), 8, "Insider claim"),
     Signal(re.compile(r"doctors?\s+don'?t\s+want", re.I), 9, "Anti-medical establishment"),
     Signal(re.compile(r"ancient\s+secret", re.I), 8, "Ancient secret claim"),
@@ -48,7 +49,7 @@ FAKE_MEDIUM = [
     Signal(re.compile(r"finally\s+(admit|reveal|confirm)", re.I), 7, "Delayed revelation claim"),
 ]
 
-# Scientific contradiction patterns (strong FAKE indicators)
+# Scientific contradiction patterns (strong FALSE indicators)
 SCIENCE_CONTRADICTIONS = [
     Signal(re.compile(r"vaccine[s]?\s+(cause|alter|modify|change)\s+(DNA|autism|infertil)", re.I), 15, "Vaccine misinformation"),
     Signal(re.compile(r"(grow|use|power)\s+(plant|crop)s?\s+(using|with|from)\s+moonlight\s+alone", re.I), 14, "Violates photosynthesis science"),
@@ -59,7 +60,7 @@ SCIENCE_CONTRADICTIONS = [
     Signal(re.compile(r"climate\s+change\s+(hoax|fake|scam|myth)", re.I), 14, "Climate denial"),
 ]
 
-FAKE_LINGUISTIC = [
+FALSE_LINGUISTIC = [
     Signal(re.compile(r"!!!|!{2,}"), 6, "Excessive punctuation"),
     Signal(re.compile(r"\b(100|1000)\s*%"), 5, "Extreme percentage claim"),
     Signal(re.compile(r"\b(destroy|obliterate|annihilate)\b", re.I), 4, "Extreme action language"),
@@ -67,8 +68,8 @@ FAKE_LINGUISTIC = [
     Signal(re.compile(r"\bhoax\b", re.I), 6, "Hoax allegation"),
 ]
 
-# ─── REAL SIGNALS (Credibility markers) ───
-REAL_SIGNALS = [
+# ─── CREDIBLE SIGNALS (Credibility markers) ───
+CREDIBLE_SIGNALS = [
     # Source attribution
     Signal(re.compile(r"according\s+to\s+(reuters|ap|associated\s+press)", re.I), -12, "Major wire service attribution"),
     Signal(re.compile(r"per\s+the\s+(fda|cdc|who|nih|epa|fbi|noaa)", re.I), -10, "Government agency attribution"),
@@ -156,8 +157,9 @@ def detect_category(text: str) -> str:
 
 def heuristic_analyze(text: str) -> dict:
     """
-    Run full heuristic analysis implementing the VeritasAI master system prompt.
-    Returns dict with 5-label verdict taxonomy and content-type classification.
+    Run full heuristic analysis.
+    Returns dict with 5-label verdict taxonomy:
+    CREDIBLE → MOSTLY_TRUE → MIXED → MOSTLY_FALSE → FALSE
     """
     text = text.strip()
     if len(text) < 10:
@@ -166,74 +168,74 @@ def heuristic_analyze(text: str) -> dict:
     content_type = detect_content_type(text)
     total_score = 0
     indicators = []
-    fake_signal_count = 0  # Track distinct fake signal categories for convergence
+    false_signal_count = 0  # Track distinct false signal categories for convergence
 
     # Run all signal patterns
-    all_signals = FAKE_HIGH + FAKE_MEDIUM + SCIENCE_CONTRADICTIONS + FAKE_LINGUISTIC + REAL_SIGNALS
+    all_signals = FALSE_HIGH + FALSE_MEDIUM + SCIENCE_CONTRADICTIONS + FALSE_LINGUISTIC + CREDIBLE_SIGNALS
     for signal in all_signals:
         if signal.pattern.search(text):
             total_score += signal.weight
-            ind_type = "fake" if signal.weight > 0 else "real"
+            ind_type = "false" if signal.weight > 0 else "credible"
             indicators.append({"label": signal.label, "type": ind_type, "weight": abs(signal.weight)})
             if signal.weight > 0:
-                fake_signal_count += 1
+                false_signal_count += 1
 
     # Caps ratio check (weak signal — max +3)
     caps = sum(1 for c in text if c.isupper())
     if len(text) > 20 and caps / len(text) > 0.4:
         total_score += 3
-        indicators.append({"label": "Excessive capitalization", "type": "fake", "weight": 3})
+        indicators.append({"label": "Excessive capitalization", "type": "false", "weight": 3})
 
-    # Urgency language — WEAK signal per system prompt rule_FP_03
-    # "BREAKING", "EXCLUSIVE" etc. are ALSO used in legitimate journalism
+    # Urgency language — WEAK signal
     if re.search(r"\b(act now|share before|share this before)\b", text, re.I):
         total_score += 5
-        indicators.append({"label": "Viral urgency (share before deleted)", "type": "fake", "weight": 5})
-        fake_signal_count += 1
+        indicators.append({"label": "Viral urgency (share before deleted)", "type": "false", "weight": 5})
+        false_signal_count += 1
 
     # Emotional manipulation
     if re.search(r"\b(furious|outraged|terrifying|horrifying|disgusting|unbelievable)\b", text, re.I):
-        total_score += 3  # Reduced from 5 — can appear in legitimate news
-        indicators.append({"label": "Emotional language", "type": "fake", "weight": 3})
+        total_score += 3  # Reduced — can appear in legitimate news
+        indicators.append({"label": "Emotional language", "type": "false", "weight": 3})
 
-    # ─── CONTENT-TYPE BIAS CORRECTIONS (per system prompt rule_FP_02) ───
+    # ─── CONTENT-TYPE BIAS CORRECTIONS ───
     if content_type == "BREAKING":
         total_score -= 8  # Breaking news tolerance
     elif content_type == "OPINION":
         total_score -= 5  # Opinion tolerance
 
     # ─── VERDICT COMPUTATION (5-label taxonomy) ───
+    # CREDIBLE → MOSTLY_TRUE → MIXED → MOSTLY_FALSE → FALSE
     max_score = 60.0
     normalized = max(min(total_score / max_score, 1.0), -1.0)
 
-    # Multi-signal convergence gate (rule_FP_01):
-    # FAKE requires multiple strong fake signals converging
-    if normalized > 0.35 and fake_signal_count >= 2:
-        verdict = "FAKE"
+    # Multi-signal convergence gate:
+    # FALSE requires multiple strong false signals converging
+    if normalized > 0.35 and false_signal_count >= 2:
+        verdict = "FALSE"
         confidence = min(round(55 + normalized * 45), 99)
-    elif normalized > 0.15 and fake_signal_count >= 1:
-        verdict = "MISLEADING"
+    elif normalized > 0.15 and false_signal_count >= 1:
+        verdict = "MOSTLY_FALSE"
         confidence = min(round(50 + normalized * 40), 85)
     elif normalized > 0.05:
-        verdict = "PARTIALLY_TRUE"
+        verdict = "MIXED"
         confidence = min(round(50 + normalized * 30), 75)
     elif normalized < -0.15:
-        verdict = "REAL"
+        verdict = "CREDIBLE"
         confidence = min(round(60 + abs(normalized) * 40), 99)
     elif normalized < -0.05:
-        verdict = "REAL"
+        verdict = "MOSTLY_TRUE"
         confidence = min(round(55 + abs(normalized) * 35), 85)
     else:
-        # Neutral / ambiguous — benefit of the doubt (rule_FP_06)
+        # Neutral / ambiguous — benefit of the doubt
         has_reporting = bool(re.search(
             r"\b(said|reported|according|announced|confirmed|update|"
             r"plan|launch|introduce|develop|improve|upgrade|affect|"
             r"face|break|discover|unveil|reveal|study|research)\b", text, re.I))
         if has_reporting:
-            verdict = "REAL"
+            verdict = "MOSTLY_TRUE"
             confidence = 65
         else:
-            verdict = "UNCERTAIN"
+            verdict = "MIXED"
             confidence = 50
 
     category = detect_category(text)
@@ -243,11 +245,11 @@ def heuristic_analyze(text: str) -> dict:
 
     if not indicator_labels:
         indicator_map = {
-            "FAKE": ["No credible source attribution", "Multiple misinformation patterns detected"],
-            "MISLEADING": ["Potentially misleading framing", "Requires fact-checking"],
-            "PARTIALLY_TRUE": ["Mixed signals detected", "Some claims need verification"],
-            "REAL": ["Standard reporting language", "Verifiable claims present", "Structured news format"],
-            "UNCERTAIN": ["Insufficient signals for determination", "More context needed"],
+            "FALSE": ["Contradicted by reliable evidence", "Multiple misinformation patterns detected"],
+            "MOSTLY_FALSE": ["Significant inaccuracies found", "Requires fact-checking"],
+            "MIXED": ["Contains both true and false elements", "Some claims need verification"],
+            "MOSTLY_TRUE": ["Largely correct reporting", "Minor inaccuracies possible"],
+            "CREDIBLE": ["Strong evidence supports claim", "Verifiable claims present", "Structured news format"],
         }
         indicator_labels = indicator_map.get(verdict, ["Analysis complete"])
 
@@ -258,5 +260,5 @@ def heuristic_analyze(text: str) -> dict:
         "category": category,
         "content_type": content_type,
         "heuristic_score": total_score,
-        "fake_signal_count": fake_signal_count,
+        "false_signal_count": false_signal_count,
     }

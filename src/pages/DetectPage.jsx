@@ -2,9 +2,7 @@ import { useState } from 'react';
 import ArticleInput from '../components/ArticleInput';
 import ResultCard from '../components/ResultCard';
 import CommunityFeed from '../components/CommunityFeed';
-import { analyzeArticle } from '../lib/api';
-
-const API_URL = import.meta.env.VITE_API_URL;// || 'http://localhost:8000';
+import { analyzeArticle, API_URL } from '../lib/api';
 
 export default function DetectPage() {
   const [result, setResult] = useState(null);

@@ -55,6 +55,28 @@ export default function CommunityFeed() {
     }
   };
 
+  const getBadgeClass = (verdict) => {
+    switch (verdict) {
+      case 'FALSE': return 'badge-false';
+      case 'MOSTLY_FALSE': return 'badge-mostly-false';
+      case 'MIXED': return 'badge-mixed';
+      case 'MOSTLY_TRUE': return 'badge-mostly-true';
+      case 'CREDIBLE': return 'badge-credible';
+      default: return 'badge-mixed';
+    }
+  };
+
+  const getDisplayLabel = (verdict) => {
+    switch (verdict) {
+      case 'FALSE': return 'FALSE';
+      case 'MOSTLY_FALSE': return 'M.FALSE';
+      case 'MIXED': return 'MIXED';
+      case 'MOSTLY_TRUE': return 'M.TRUE';
+      case 'CREDIBLE': return 'CREDIBLE';
+      default: return verdict;
+    }
+  };
+
   return (
     <div className="community-feed">
       <div className="feed-header">
@@ -79,14 +101,8 @@ export default function CommunityFeed() {
           {analyses.map((item) => (
             <div key={item.id} className="feed-item">
               <div className="feed-item-top">
-                <span className={`mini-badge ${
-                  item.verdict === 'FAKE' ? 'badge-fake' :
-                  item.verdict === 'MISLEADING' ? 'badge-misleading' :
-                  item.verdict === 'PARTIALLY_TRUE' ? 'badge-partial' :
-                  item.verdict === 'UNCERTAIN' ? 'badge-uncertain' :
-                  'badge-real'
-                }`}>
-                  {item.verdict === 'PARTIALLY_TRUE' ? 'PARTIAL' : item.verdict}
+                <span className={`mini-badge ${getBadgeClass(item.verdict)}`}>
+                  {getDisplayLabel(item.verdict)}
                 </span>
                 <span className="feed-confidence">{item.confidence}%</span>
               </div>

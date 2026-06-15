@@ -1,7 +1,8 @@
 """
-VeritasAI Ensemble Analysis Engine v2.0
+VeritasAI Ensemble Analysis Engine v3.0
 Multi-engine convergence scoring with 5-label verdict taxonomy.
-Implements false-positive prevention rules from master system prompt.
+
+Labels: CREDIBLE → MOSTLY_TRUE → MIXED → MOSTLY_FALSE → FALSE
 """
 import re
 import random
@@ -21,7 +22,7 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt", "text", "md"}
 
 # 5-label verdict taxonomy
-VERDICTS = ["REAL", "PARTIALLY_TRUE", "MISLEADING", "FAKE", "UNCERTAIN"]
+VERDICTS = ["CREDIBLE", "MOSTLY_TRUE", "MIXED", "MOSTLY_FALSE", "FALSE"]
 
 
 class AnalyzeRequest(BaseModel):
@@ -63,30 +64,33 @@ def generate_analysis_text(verdict, confidence, indicators, engines, content_typ
     ind_text = ", ".join(indicators[:3]).lower() if indicators else "general pattern analysis"
     n = len(engines)
 
-    if verdict == "FAKE":
+    if verdict == "FALSE":
         return random.choice([
-            f"Multi-engine analysis ({n} engines) identifies significant misinformation patterns with {confidence}% confidence. Multiple converging signals: {ind_text}.",
-            f"Cross-referenced across {n} engines — provably false claims detected. {ind_text.capitalize()} confirm fabricated content ({confidence}%).",
+            f"Multi-engine analysis ({n} engines) identifies content contradicted by reliable evidence with {confidence}% confidence. Key signals: {ind_text}.",
+            f"Cross-referenced across {n} engines — claims contradicted by verified sources. {ind_text.capitalize()} confirm false content ({confidence}%).",
         ])
-    elif verdict == "MISLEADING":
+    elif verdict == "MOSTLY_FALSE":
         return random.choice([
-            f"Analysis across {n} engines found potentially misleading framing ({confidence}% confidence). Key concerns: {ind_text}.",
-            f"Ensemble of {n} AI engines flags misleading patterns. Some claims require verification: {ind_text} ({confidence}%).",
+            f"Analysis across {n} engines found significant inaccuracies ({confidence}% confidence). Key concerns: {ind_text}.",
+            f"Ensemble of {n} AI engines flags substantial inaccuracies. Claims require verification: {ind_text} ({confidence}%).",
         ])
-    elif verdict == "PARTIALLY_TRUE":
+    elif verdict == "MIXED":
         return random.choice([
-            f"Multi-engine review ({n} engines) finds mixed signals ({confidence}% confidence). Some claims verifiable, others uncertain: {ind_text}.",
-            f"Ensemble of {n} engines detects a mix of credible and questionable elements: {ind_text} ({confidence}%).",
+            f"Multi-engine review ({n} engines) finds both true and false elements ({confidence}% confidence). Mixed signals: {ind_text}.",
+            f"Ensemble of {n} engines detects a combination of credible and questionable elements: {ind_text} ({confidence}%).",
         ])
-    elif verdict == "UNCERTAIN":
-        return f"Analysis across {n} engines produced inconclusive results ({confidence}% confidence). Insufficient evidence for definitive classification. Key signals: {ind_text}."
-    else:  # REAL
+    elif verdict == "MOSTLY_TRUE":
+        return random.choice([
+            f"Multi-engine analysis ({n} engines) finds content largely correct with minor inaccuracies ({confidence}% confidence). Signals: {ind_text}.",
+            f"Ensemble of {n} engines confirms mostly accurate reporting ({confidence}%). Minor concerns: {ind_text}.",
+        ])
+    else:  # CREDIBLE
         ct_note = ""
         if content_type == "BREAKING":
             ct_note = " Content identified as breaking news — appropriate tolerance applied."
         return random.choice([
-            f"Multi-engine verification ({n} engines) confirms credible reporting with {confidence}% confidence. Positive signals: {ind_text}.{ct_note}",
-            f"Ensemble of {n} AI engines validates this content ({confidence}% confidence). {ind_text.capitalize()} match legitimate journalism.{ct_note}",
+            f"Multi-engine verification ({n} engines) confirms credible reporting with {confidence}% confidence. Supporting evidence: {ind_text}.{ct_note}",
+            f"Ensemble of {n} AI engines validates strong evidence supporting this content ({confidence}% confidence). {ind_text.capitalize()} match legitimate journalism.{ct_note}",
         ])
 
 
@@ -117,7 +121,8 @@ async def _safe_gfc(text):
 async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
     """
     Core ensemble detection logic — all engines run in PARALLEL.
-    Implements multi-signal convergence (rule_FP_01) and 5-label taxonomy.
+    Implements multi-signal convergence and 5-label taxonomy:
+    CREDIBLE → MOSTLY_TRUE → MIXED → MOSTLY_FALSE → FALSE
     """
     engines_used = []
 
@@ -134,7 +139,8 @@ async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
     )
 
     # ── Collect engine verdicts ──
-    # Each vote: (verdict, confidence, weight, engine_name)
+    # Map HF BERT results to new taxonomy
+    # HF returns FAKE/REAL → map to FALSE/CREDIBLE
     votes = []
     votes.append((h["verdict"], h["confidence"], 0.30, "heuristic"))
 
@@ -142,17 +148,18 @@ async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
     if hf_result:
         engines_used.append("huggingface_bert")
         hf_conf = hf_result["confidence"]
-        votes.append((hf_result["verdict"], hf_result["confidence"], 0.35, "bert"))
+        # Map old FAKE/REAL from HF model to new taxonomy
+        hf_verdict = "FALSE" if hf_result["verdict"] == "FAKE" else "CREDIBLE"
+        votes.append((hf_verdict, hf_result["confidence"], 0.35, "bert"))
 
     cb_score, cb_check = None, None
     if cb_result:
         engines_used.append("claimbuster_deberta")
         cb_score = cb_result["cfs_score"]
         cb_check = cb_result["is_checkworthy"]
-        # ClaimBuster measures check-worthiness, not directly FAKE
-        # Only adds a weak MISLEADING signal if highly check-worthy
+        # ClaimBuster measures check-worthiness → maps to MIXED signal
         if cb_result["is_checkworthy"] and cb_result["cfs_score"] > 0.7:
-            votes.append(("MISLEADING", min(round(cb_result["cfs_score"] * 70), 75), 0.10, "claimbuster"))
+            votes.append(("MIXED", min(round(cb_result["cfs_score"] * 70), 75), 0.10, "claimbuster"))
 
     gfc_found, gfc_rating, gfc_claims = None, None, None
     if gfc_result:
@@ -162,49 +169,49 @@ async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
         gfc_claims = gfc_result.get("claims", [])[:3]
         if gfc_result.get("found") and gfc_result.get("overall_rating"):
             if gfc_result["overall_rating"] == "DEBUNKED":
-                votes.append(("FAKE", 90, 0.25, "google_fc"))
+                votes.append(("FALSE", 90, 0.25, "google_fc"))
             elif gfc_result["overall_rating"] == "VERIFIED":
-                votes.append(("REAL", 90, 0.25, "google_fc"))
+                votes.append(("CREDIBLE", 90, 0.25, "google_fc"))
 
     if not votes:
         raise HTTPException(500, "No detection engines available")
 
-    # ── MULTI-SIGNAL CONVERGENCE GATE (rule_FP_01) ──
-    # Count how many engines lean negative (FAKE, MISLEADING, PARTIALLY_TRUE)
-    negative_votes = [v for v in votes if v[0] in ("FAKE", "MISLEADING")]
-    real_votes = [v for v in votes if v[0] == "REAL"]
-    uncertain_votes = [v for v in votes if v[0] in ("UNCERTAIN", "PARTIALLY_TRUE")]
+    # ── MULTI-SIGNAL CONVERGENCE GATE ──
+    negative_votes = [v for v in votes if v[0] in ("FALSE", "MOSTLY_FALSE")]
+    credible_votes = [v for v in votes if v[0] == "CREDIBLE"]
+    mixed_votes = [v for v in votes if v[0] in ("MIXED", "MOSTLY_TRUE")]
 
     total_w = sum(v[2] for v in votes)
 
     # Compute weighted scores per verdict direction
-    fake_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "FAKE")
-    misleading_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "MISLEADING")
-    real_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "REAL")
-    uncertain_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] in ("UNCERTAIN", "PARTIALLY_TRUE"))
+    false_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "FALSE")
+    mostly_false_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "MOSTLY_FALSE")
+    credible_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "CREDIBLE")
+    mostly_true_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "MOSTLY_TRUE")
+    mixed_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "MIXED")
 
-    negative_total = fake_weighted + misleading_weighted * 0.6
-    positive_total = real_weighted
+    negative_total = false_weighted + mostly_false_weighted * 0.6
+    positive_total = credible_weighted + mostly_true_weighted * 0.6
 
     # ── APPLY CONVERGENCE RULES ──
     convergence_signals = len(negative_votes)
 
-    # FAKE requires ≥2 engines agreeing + strong signal
-    if len([v for v in votes if v[0] == "FAKE"]) >= 2 and negative_total > positive_total * 1.3:
-        verdict = "FAKE"
+    # FALSE requires ≥2 engines agreeing + strong signal
+    if len([v for v in votes if v[0] == "FALSE"]) >= 2 and negative_total > positive_total * 1.3:
+        verdict = "FALSE"
         confidence = min(round(negative_total * 1.05), 99)
-    elif fake_weighted > 0 and len([v for v in votes if v[0] == "FAKE"]) == 1 and negative_total > positive_total:
-        # Only 1 engine says FAKE — downgrade to MISLEADING (rule_FP_01)
-        verdict = "MISLEADING"
+    elif false_weighted > 0 and len([v for v in votes if v[0] == "FALSE"]) == 1 and negative_total > positive_total:
+        # Only 1 engine says FALSE — downgrade to MOSTLY_FALSE
+        verdict = "MOSTLY_FALSE"
         confidence = min(round(negative_total * 0.85), 80)
     elif negative_total > positive_total and convergence_signals >= 1:
-        verdict = "MISLEADING" if negative_total > 40 else "PARTIALLY_TRUE"
+        verdict = "MOSTLY_FALSE" if negative_total > 40 else "MIXED"
         confidence = min(round(max(negative_total, positive_total)), 80)
     elif positive_total > negative_total:
-        verdict = "REAL"
+        verdict = "CREDIBLE"
         base = positive_total
         # Agreement bonus
-        agree_pct = len(real_votes) / len(votes)
+        agree_pct = len(credible_votes) / len(votes)
         if agree_pct >= 0.7:
             confidence = min(round(base * 1.08), 99)
         elif agree_pct >= 0.5:
@@ -212,20 +219,23 @@ async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
         else:
             confidence = min(round(base * 0.92), 88)
         confidence = max(confidence, 55)
+        # If not strong enough for CREDIBLE, use MOSTLY_TRUE
+        if confidence < 70 and agree_pct < 0.5:
+            verdict = "MOSTLY_TRUE"
     else:
-        # Tied or ambiguous — prefer UNCERTAIN (rule_FP_06)
-        verdict = "UNCERTAIN"
+        # Tied or ambiguous
+        verdict = "MIXED"
         confidence = 50
 
     # ── FINAL SAFEGUARDS ──
-    # If Google Fact Check found VERIFIED claims, override toward REAL
-    if gfc_rating == "VERIFIED" and verdict in ("MISLEADING", "PARTIALLY_TRUE", "UNCERTAIN"):
-        verdict = "REAL"
+    # If Google Fact Check found VERIFIED claims, override toward CREDIBLE
+    if gfc_rating == "VERIFIED" and verdict in ("MOSTLY_FALSE", "MIXED", "MOSTLY_TRUE"):
+        verdict = "CREDIBLE"
         confidence = max(confidence, 75)
 
-    # If Google Fact Check found DEBUNKED, ensure at least MISLEADING
-    if gfc_rating == "DEBUNKED" and verdict == "REAL":
-        verdict = "PARTIALLY_TRUE"
+    # If Google Fact Check found DEBUNKED, ensure at least MOSTLY_FALSE
+    if gfc_rating == "DEBUNKED" and verdict == "CREDIBLE":
+        verdict = "MIXED"
         confidence = min(confidence, 70)
 
     indicators = h["indicators"]
