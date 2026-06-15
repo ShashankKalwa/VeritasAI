@@ -97,7 +97,7 @@ class AnalyzeRequest(BaseModel):
 
 async def _safe_hf(text):
     try:
-        return await asyncio.wait_for(get_hf_detector().predict(text), timeout=5.0)
+        return await asyncio.wait_for(get_hf_detector().predict(text), timeout=30.0)
     except Exception as e:
         logger.warning(f"HF engine: {e}")
         return None
@@ -105,7 +105,7 @@ async def _safe_hf(text):
 
 async def _safe_cb(text):
     try:
-        return await asyncio.wait_for(get_claimbuster_hf().check(text), timeout=5.0)
+        return await asyncio.wait_for(get_claimbuster_hf().check(text), timeout=30.0)
     except Exception as e:
         logger.warning(f"ClaimBuster engine: {e}")
         return None
