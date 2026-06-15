@@ -62,6 +62,7 @@ export default function CommunityFeed() {
       case 'MIXED': return 'badge-mixed';
       case 'MOSTLY_TRUE': return 'badge-mostly-true';
       case 'CREDIBLE': return 'badge-credible';
+      case 'INSUFFICIENT_DATA': return 'badge-insufficient';
       default: return 'badge-mixed';
     }
   };
@@ -73,6 +74,7 @@ export default function CommunityFeed() {
       case 'MIXED': return 'MIXED';
       case 'MOSTLY_TRUE': return 'M.TRUE';
       case 'CREDIBLE': return 'CREDIBLE';
+      case 'INSUFFICIENT_DATA': return 'INSUFF.';
       default: return verdict;
     }
   };
