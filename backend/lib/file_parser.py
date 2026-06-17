@@ -50,6 +50,20 @@ def extract_text_from_txt(file_bytes: bytes) -> str:
         return ""
 
 
+def extract_text_from_url(url: str) -> str:
+    """Extract text from a URL using trafilatura."""
+    try:
+        import trafilatura
+        downloaded = trafilatura.fetch_url(url)
+        if downloaded:
+            text = trafilatura.extract(downloaded)
+            return text or ""
+        return ""
+    except Exception as e:
+        logger.error(f"URL extraction error: {e}")
+        return ""
+
+
 def extract_text(filename: str, file_bytes: bytes) -> str:
     """Route to correct extractor based on file extension."""
     ext = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""

@@ -9,7 +9,7 @@ export default function DetectPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleAnalyze = async (text, file) => {
+  const handleAnalyze = async (payload, file, explicitType) => {
     setLoading(true);
     setError('');
     setResult(null);
@@ -21,6 +21,9 @@ export default function DetectPage() {
         // File upload mode
         const formData = new FormData();
         formData.append('file', file);
+        if (explicitType) {
+            formData.append('explicit_type', explicitType);
+        }
 
         const resp = await fetch(`${API_URL}/api/analyze/file`, {
           method: 'POST',
@@ -33,8 +36,8 @@ export default function DetectPage() {
         }
         data = await resp.json();
       } else {
-        // Text mode
-        data = await analyzeArticle(text);
+        // Text/URL mode
+        data = await analyzeArticle(payload);
       }
 
       setResult(data);

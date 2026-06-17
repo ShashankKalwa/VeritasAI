@@ -9,16 +9,20 @@ const SAMPLES = {
 
 export default function ArticleInput({ onAnalyze, loading }) {
   const [text, setText] = useState('');
-  const [mode, setMode] = useState('text'); // 'text' or 'file'
+  const [url, setUrl] = useState('');
+  const [mode, setMode] = useState('text'); // 'text', 'url', or 'file'
+  const [explicitType, setExplicitType] = useState('Auto-detect');
   const [fileName, setFileName] = useState('');
   const [fileObj, setFileObj] = useState(null);
   const fileRef = useRef(null);
 
   const handleSubmit = () => {
     if (mode === 'file' && fileObj) {
-      onAnalyze(null, fileObj);
-    } else if (text.trim().length >= 10) {
-      onAnalyze(text, null);
+      onAnalyze(null, fileObj, explicitType);
+    } else if (mode === 'url' && url.trim().length >= 5) {
+      onAnalyze({ input_type: 'url', content: url.trim(), explicit_type: explicitType }, null);
+    } else if (mode === 'text' && text.trim().length >= 10) {
+      onAnalyze({ input_type: 'text', content: text, explicit_type: explicitType }, null);
     }
   };
 
@@ -47,7 +51,7 @@ export default function ArticleInput({ onAnalyze, loading }) {
     if (fileRef.current) fileRef.current.value = '';
   };
 
-  const canSubmit = mode === 'file' ? !!fileObj : text.trim().length >= 10;
+  const canSubmit = mode === 'file' ? !!fileObj : mode === 'url' ? url.trim().length >= 5 : text.trim().length >= 10;
 
   return (
     <div className="article-input-container">
@@ -67,11 +71,31 @@ export default function ArticleInput({ onAnalyze, loading }) {
           ✍️ Paste Text
         </button>
         <button
+          className={`mode-btn ${mode === 'url' ? 'active' : ''}`}
+          onClick={() => { setMode('url'); clearFile(); }}
+        >
+          🔗 URL
+        </button>
+        <button
           className={`mode-btn ${mode === 'file' ? 'active' : ''}`}
           onClick={() => setMode('file')}
         >
           📁 Upload File
         </button>
+      </div>
+
+      <div className="content-type-selector" style={{ marginBottom: '1rem' }}>
+        <label style={{ marginRight: '0.5rem', fontWeight: 600 }}>Content Type:</label>
+        <select 
+          value={explicitType} 
+          onChange={(e) => setExplicitType(e.target.value)}
+          style={{ padding: '0.25rem', borderRadius: '4px', border: '1px solid #ccc' }}
+        >
+          <option value="Auto-detect">Auto-detect</option>
+          <option value="news_report">News Report</option>
+          <option value="opinion_satire">Opinion / Satire</option>
+          <option value="social_media_post">Social Media Post</option>
+        </select>
       </div>
 
       {mode === 'text' ? (
@@ -105,6 +129,28 @@ export default function ArticleInput({ onAnalyze, loading }) {
             <button className="sample-pill real" onClick={() => setText(SAMPLES.real2)}>Real #2</button>
           </div>
         </>
+      ) : mode === 'url' ? (
+        <div className="input-wrapper">
+          <input
+            type="url"
+            className="article-textarea"
+            placeholder="Paste a URL (e.g., https://news.example.com/...)"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            style={{ minHeight: '60px', height: 'auto', padding: '1rem', fontSize: '1.1rem' }}
+          />
+          <div className="input-footer">
+            <span className="char-count"></span>
+            <button
+              className="btn-primary"
+              onClick={handleSubmit}
+              disabled={loading || !canSubmit}
+            >
+              {loading && <span className="spinner"></span>}
+              {loading ? 'Analyzing...' : '🔍 Analyze URL'}
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="file-upload-area">
           <input

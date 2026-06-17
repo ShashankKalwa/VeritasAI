@@ -6,20 +6,22 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
  * Analyze an article/headline for fake news via backend API
  * Uses ensemble ML model + heuristic engine on the server
  */
-export async function analyzeArticle(text) {
-  if (!text || text.trim().length < 10) {
-    throw new Error('Text must be at least 10 characters long');
-  }
-
-  const cleanText = text.replace(/<[^>]*>/g, '').trim();
-  if (cleanText.length > 5000) {
-    throw new Error('Text must be under 5000 characters');
+export async function analyzeArticle(payload) {
+  if (payload.input_type === 'text') {
+    if (!payload.content || payload.content.trim().length < 10) {
+      throw new Error('Text must be at least 10 characters long');
+    }
+    const cleanText = payload.content.replace(/<[^>]*>/g, '').trim();
+    if (cleanText.length > 5000) {
+      throw new Error('Text must be under 5000 characters');
+    }
+    payload.content = cleanText;
   }
 
   const response = await fetch(`${API_URL}/api/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: cleanText }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
