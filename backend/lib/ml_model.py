@@ -198,23 +198,3 @@ def get_google_factcheck():
     global _gfc
     if _gfc is None: _gfc = GoogleFactChecker()
     return _gfc
-
-async def claimbuster_score(text: str) -> float:
-    cb = get_claimbuster_hf()
-    res = await cb.check(text)
-    if res:
-        return res["cfs_score"] * 100
-    return 0.0
-
-async def bert_signal(text: str) -> float:
-    hf = get_hf_detector()
-    res = await hf.predict(text)
-    if not res:
-        return 50.0  # neutral fallback
-    
-    # REAL with 90% confidence -> signal = 90
-    # FAKE with 80% confidence -> signal = 20
-    if res["verdict"] == "REAL":
-        return float(res["confidence"])
-    else:
-        return float(100 - res["confidence"])

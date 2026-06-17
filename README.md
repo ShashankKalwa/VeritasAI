@@ -22,6 +22,7 @@ All engines feed into a **weighted ensemble merger** for maximum accuracy.
 - 📊 **Analytics Dashboard** — Real-time charts (Chart.js)
 - 🔴 **Live Feed** — WebSocket-powered real-time community feed
 - 📰 **Dataset Explorer** — 500 labeled headlines, searchable & filterable
+- 🔐 **Auth** — Supabase Auth (email/password, JWT)
 - ⚡ **Instant** — Sub-second detection, no waiting
 
 ## 🏗️ Tech Stack
@@ -31,21 +32,8 @@ All engines feed into a **weighted ensemble merger** for maximum accuracy.
 | **Frontend** | React 18 + Vite + Chart.js |
 | **Backend** | FastAPI (Python) + Uvicorn |
 | **AI/ML** | HuggingFace Inference API, Custom NLP |
-| **Database** | Supabase (PostgreSQL + Realtime) |
+| **Database** | Supabase (PostgreSQL + Realtime + Auth) |
 | **Styling** | Vanilla CSS (dark newsroom theme) |
-
-## 🏷️ 6-Level Credibility Taxonomy
-
-VeritasAI classifies text into one of six spectrum levels:
-
-| Label | Meaning |
-|-------|---------|
-| 🟢 **Credible** | Strong evidence supporting the claim |
-| 🟢 **Likely True** | Largely correct with minor inaccuracies |
-| 🟡 **Mixed / Misleading** | Contains both true and false elements |
-| 🟠 **Likely False** | Significant inaccuracies |
-| 🔴 **False** | Contradicted by reliable evidence |
-| 💬 **Opinion / Not Fact-Checkable** | Subjective, satire, or not verifiable |
 
 ## 🚀 Quick Start
 
@@ -89,12 +77,6 @@ ALLOWED_ORIGINS=http://localhost:5173
 HF_API_TOKEN=your_huggingface_token
 CLAIMBUSTER_HF_MODEL=whispAI/ClaimBuster-DeBERTaV2
 GOOGLE_FACTCHECK_API_KEY=your_google_factcheck_key
-
-# VeritasAI V2 Keys
-SEARCH_API_PROVIDER=tavily
-SEARCH_API_KEY=your_tavily_key
-LLM_PROVIDER=google
-GOOGLE_AI_API_KEY=your_gemini_api_key
 ```
 
 ## 📡 API Endpoints
@@ -138,7 +120,8 @@ VeritasAI/
 ├── src/                  # React frontend
 │   ├── components/       # Navbar, ArticleInput, ResultCard, etc.
 │   ├── pages/            # DetectPage, DashboardPage, DatasetPage
-│   └── lib/              # API client, Supabase, heuristics
+│   ├── lib/              # API client, Supabase, heuristics
+│   └── context/          # Auth context
 ├── backend/              # FastAPI backend
 │   ├── routes/           # analyze, stats, feed, dataset
 │   ├── lib/              # ml_model, heuristics, file_parser

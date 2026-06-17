@@ -277,25 +277,3 @@ def heuristic_analyze(text: str) -> dict:
         "heuristic_score": total_score,
         "false_signal_count": false_signal_count,
     }
-
-def manipulation_signal(text: str) -> float:
-    """
-    Run existing heuristic analysis and invert it to get manipulation signal (0-100).
-    100 = no manipulation detected
-    0 = extreme manipulation
-    """
-    res = heuristic_analyze(text)
-    if not res:
-        return 100.0
-    
-    score = res["heuristic_score"]
-    words = len(text.split())
-    if words < 20: max_score = 30.0
-    elif words < 50: max_score = 45.0
-    else: max_score = 60.0
-    
-    manipulation_score = max(0, min((score / max_score) * 100, 100))
-    return 100.0 - manipulation_score
-
-async def manipulation_signal_async(text: str) -> float:
-    return manipulation_signal(text)

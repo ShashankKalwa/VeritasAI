@@ -18,9 +18,9 @@ async def get_stats():
         analyses = resp.data or []
 
         total = len(analyses)
-        credible_count = sum(1 for a in analyses if a["verdict"] in ("Credible", "Likely True", "CREDIBLE", "MOSTLY_TRUE"))
-        false_count = sum(1 for a in analyses if a["verdict"] in ("False", "Likely False", "FALSE", "MOSTLY_FALSE"))
-        mixed_count = sum(1 for a in analyses if a["verdict"] in ("Mixed / Misleading", "MIXED"))
+        credible_count = sum(1 for a in analyses if a["verdict"] in ("CREDIBLE", "MOSTLY_TRUE"))
+        false_count = sum(1 for a in analyses if a["verdict"] in ("FALSE", "MOSTLY_FALSE"))
+        mixed_count = sum(1 for a in analyses if a["verdict"] == "MIXED")
         avg_confidence = round(sum(a["confidence"] for a in analyses) / total) if total > 0 else 0
 
         # By category
@@ -29,9 +29,9 @@ async def get_stats():
             cat = a["category"]
             if cat not in cat_map:
                 cat_map[cat] = {"credible": 0, "false": 0}
-            if a["verdict"] in ("False", "Likely False", "FALSE", "MOSTLY_FALSE"):
+            if a["verdict"] in ("FALSE", "MOSTLY_FALSE"):
                 cat_map[cat]["false"] += 1
-            elif a["verdict"] not in ("Opinion / Not Fact-Checkable",):
+            else:
                 cat_map[cat]["credible"] += 1
 
         by_category = sorted(

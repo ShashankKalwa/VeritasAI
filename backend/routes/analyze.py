@@ -4,24 +4,16 @@ Multi-engine convergence scoring with 5-label verdict taxonomy.
 
 Labels: CREDIBLE → MOSTLY_TRUE → MIXED → MOSTLY_FALSE → FALSE
 """
-import os
-import json
+import re
+import random
 import logging
 import asyncio
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from pydantic import BaseModel
-
-from lib.input_handler import normalize_and_detect_type
-from lib.claim_extractor import extract_claims
-from lib.ml_model import claimbuster_score, bert_signal
-from lib.heuristics import manipulation_signal_async
-from lib.evidence_retriever import retrieve_evidence
-from lib.source_credibility import score_evidence
-from lib.evidence_reasoner import reason_claim
-from lib.ensemble_verdict_v2 import compute_claim_verdict, compute_overall_verdict
-from lib.explainability_formatter import format_explainability
-from lib.supabase_client import get_supabase
+from pydantic import BaseModel, field_validator
+from lib.heuristics import heuristic_analyze
+from lib.ml_model import get_hf_detector, get_claimbuster_hf, get_google_factcheck
 from lib.file_parser import extract_text, is_meaningful_content
+from lib.supabase_client import get_supabase
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -29,100 +21,270 @@ router = APIRouter()
 MAX_FILE_SIZE = 5 * 1024 * 1024
 ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt", "text", "md"}
 
+# 5-label verdict taxonomy
+VERDICTS = ["CREDIBLE", "MOSTLY_TRUE", "MIXED", "MOSTLY_FALSE", "FALSE"]
+
+
 class AnalyzeRequest(BaseModel):
-    input_type: str
-    content: str
-    explicit_type: str | None = None
+    text: str
 
-async def process_analysis(input_type: str, content: str, explicit_type: str = None) -> dict:
-    text, content_type = normalize_and_detect_type(input_type, content, explicit_type)
-    
-    if len(text) < 10:
-        raise HTTPException(400, "Text must be at least 10 characters")
-        
-    text = text[:5000]
-    
-    claims_task = asyncio.create_task(extract_claims(text, content_type))
-    bert_task = asyncio.create_task(bert_signal(text))
-    manip_task = asyncio.create_task(manipulation_signal_async(text))
-    
-    claims, bert_val, manip_val = await asyncio.gather(claims_task, bert_task, manip_task)
-    
-    if not claims:
-        return {
-            "overall_verdict": "Opinion / Not Fact-Checkable",
-            "overall_confidence": 0,
-            "content_type": content_type,
-            "claims": [],
-            "explainability": {
-                "primary_signal": "No factual claims were found to verify.",
-                "secondary_signals": [],
-                "top_sources": []
-            }
-        }
-        
-    async def process_single_claim(claim):
-        c_text = claim["claim_text"]
-        
-        cb_score = await claimbuster_score(c_text)
-        if cb_score < 40.0:
-            claim["verdict"] = "Opinion / Not Fact-Checkable"
-            claim["confidence"] = 0
-            claim["model_signals"] = {
-                "bert_linguistic_signal": bert_val,
-                "heuristic_manipulation_signal": manip_val
-            }
-            return claim
-            
-        evidence_items = await retrieve_evidence(c_text)
-        evidence_items = score_evidence(evidence_items)
-        
-        reasoned = await reason_claim(c_text, evidence_items, bert_val, manip_val)
-        
-        claim["evidence"] = reasoned
-        claim["model_signals"] = {
-            "bert_linguistic_signal": bert_val,
-            "heuristic_manipulation_signal": manip_val
-        }
-        
-        verdict, confidence = compute_claim_verdict(claim)
-        claim["verdict"] = verdict
-        claim["confidence"] = confidence
-        return claim
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, v):
+        v = re.sub(r"<[^>]*>", "", v).strip()
+        if len(v) < 10:
+            raise ValueError("Text must be at least 10 characters")
+        if len(v) > 5000:
+            raise ValueError("Text must be under 5000 characters")
+        return v
 
-    tasks = [asyncio.create_task(process_single_claim(c)) for c in claims]
-    processed_claims = await asyncio.gather(*tasks)
-    
-    o_verdict, o_confidence = compute_overall_verdict(processed_claims)
-    
-    resp = format_explainability(processed_claims, o_verdict, o_confidence, content_type)
-    
+
+class AnalyzeResponse(BaseModel):
+    id: str | None = None
+    verdict: str
+    confidence: int
+    analysis: str
+    indicators: list[str]
+    category: str
+    content_type: str = "HARD_NEWS"
+    heuristic_score: float
+    hf_confidence: int | None = None
+    claimbuster_score: float | None = None
+    claimbuster_checkworthy: bool | None = None
+    google_factcheck_found: bool | None = None
+    google_factcheck_rating: str | None = None
+    google_factcheck_claims: list | None = None
+    engines_used: list[str] = []
+    ensemble_method: str = "multi_engine"
+    source_type: str = "text"
+    convergence_signals: int = 0
+
+
+def generate_analysis_text(verdict, confidence, indicators, engines, content_type):
+    ind_text = ", ".join(indicators[:3]).lower() if indicators else "general pattern analysis"
+    n = len(engines)
+
+    if verdict == "FALSE":
+        return random.choice([
+            f"Multi-engine analysis ({n} engines) identifies content contradicted by reliable evidence with {confidence}% confidence. Key signals: {ind_text}.",
+            f"Cross-referenced across {n} engines — claims contradicted by verified sources. {ind_text.capitalize()} confirm false content ({confidence}%).",
+        ])
+    elif verdict == "MOSTLY_FALSE":
+        return random.choice([
+            f"Analysis across {n} engines found significant inaccuracies ({confidence}% confidence). Key concerns: {ind_text}.",
+            f"Ensemble of {n} AI engines flags substantial inaccuracies. Claims require verification: {ind_text} ({confidence}%).",
+        ])
+    elif verdict == "MIXED":
+        return random.choice([
+            f"Multi-engine review ({n} engines) finds both true and false elements ({confidence}% confidence). Mixed signals: {ind_text}.",
+            f"Ensemble of {n} engines detects a combination of credible and questionable elements: {ind_text} ({confidence}%).",
+        ])
+    elif verdict == "MOSTLY_TRUE":
+        return random.choice([
+            f"Multi-engine analysis ({n} engines) finds content largely correct with minor inaccuracies ({confidence}% confidence). Signals: {ind_text}.",
+            f"Ensemble of {n} engines confirms mostly accurate reporting ({confidence}%). Minor concerns: {ind_text}.",
+        ])
+    else:  # CREDIBLE
+        ct_note = ""
+        if content_type == "BREAKING":
+            ct_note = " Content identified as breaking news — appropriate tolerance applied."
+        return random.choice([
+            f"Multi-engine verification ({n} engines) confirms credible reporting with {confidence}% confidence. Supporting evidence: {ind_text}.{ct_note}",
+            f"Ensemble of {n} AI engines validates strong evidence supporting this content ({confidence}% confidence). {ind_text.capitalize()} match legitimate journalism.{ct_note}",
+        ])
+
+
+async def _safe_hf(text):
+    try:
+        return await asyncio.wait_for(get_hf_detector().predict(text), timeout=5.0)
+    except Exception as e:
+        logger.warning(f"HF engine: {e}")
+        return None
+
+
+async def _safe_cb(text):
+    try:
+        return await asyncio.wait_for(get_claimbuster_hf().check(text), timeout=5.0)
+    except Exception as e:
+        logger.warning(f"ClaimBuster engine: {e}")
+        return None
+
+
+async def _safe_gfc(text):
+    try:
+        return await asyncio.wait_for(get_google_factcheck().check(text), timeout=3.0)
+    except Exception as e:
+        logger.warning(f"Google FC engine: {e}")
+        return None
+
+
+async def run_ensemble(text: str, source_type: str = "text") -> AnalyzeResponse:
+    """
+    Core ensemble detection logic — all engines run in PARALLEL.
+    Implements multi-signal convergence and 5-label taxonomy:
+    CREDIBLE → MOSTLY_TRUE → MIXED → MOSTLY_FALSE → FALSE
+    """
+    engines_used = []
+
+    # ── Engine 1: Heuristic NLP (instant, always available) ──
+    h = heuristic_analyze(text)
+    if not h:
+        raise HTTPException(400, "Text too short for analysis")
+    engines_used.append("heuristic_nlp")
+    content_type = h.get("content_type", "HARD_NEWS")
+
+    # ── Engines 2-4: Run ALL in parallel ──
+    hf_result, cb_result, gfc_result = await asyncio.gather(
+        _safe_hf(text), _safe_cb(text), _safe_gfc(text)
+    )
+
+    # ── Collect engine verdicts ──
+    # Map HF BERT results to new taxonomy
+    # HF returns FAKE/REAL → map to FALSE/CREDIBLE
+    votes = []
+    votes.append((h["verdict"], h["confidence"], 0.30, "heuristic"))
+
+    hf_conf = None
+    if hf_result:
+        engines_used.append("huggingface_bert")
+        hf_conf = hf_result["confidence"]
+        # Map old FAKE/REAL from HF model to new taxonomy
+        hf_verdict = "FALSE" if hf_result["verdict"] == "FAKE" else "CREDIBLE"
+        votes.append((hf_verdict, hf_result["confidence"], 0.35, "bert"))
+
+    cb_score, cb_check = None, None
+    if cb_result:
+        engines_used.append("claimbuster_deberta")
+        cb_score = cb_result["cfs_score"]
+        cb_check = cb_result["is_checkworthy"]
+        # ClaimBuster measures check-worthiness → maps to MIXED signal
+        if cb_result["is_checkworthy"] and cb_result["cfs_score"] > 0.7:
+            votes.append(("MIXED", min(round(cb_result["cfs_score"] * 70), 75), 0.10, "claimbuster"))
+
+    gfc_found, gfc_rating, gfc_claims = None, None, None
+    if gfc_result:
+        engines_used.append("google_factcheck")
+        gfc_found = gfc_result.get("found", False)
+        gfc_rating = gfc_result.get("overall_rating")
+        gfc_claims = gfc_result.get("claims", [])[:3]
+        if gfc_result.get("found") and gfc_result.get("overall_rating"):
+            if gfc_result["overall_rating"] == "DEBUNKED":
+                votes.append(("FALSE", 90, 0.25, "google_fc"))
+            elif gfc_result["overall_rating"] == "VERIFIED":
+                votes.append(("CREDIBLE", 90, 0.25, "google_fc"))
+
+    if not votes:
+        raise HTTPException(500, "No detection engines available")
+
+    # ── MULTI-SIGNAL CONVERGENCE GATE ──
+    negative_votes = [v for v in votes if v[0] in ("FALSE", "MOSTLY_FALSE")]
+    credible_votes = [v for v in votes if v[0] == "CREDIBLE"]
+    mixed_votes = [v for v in votes if v[0] in ("MIXED", "MOSTLY_TRUE")]
+
+    total_w = sum(v[2] for v in votes)
+
+    # Compute weighted scores per verdict direction
+    false_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "FALSE")
+    mostly_false_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "MOSTLY_FALSE")
+    credible_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "CREDIBLE")
+    mostly_true_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "MOSTLY_TRUE")
+    mixed_weighted = sum(v[1] * (v[2] / total_w) for v in votes if v[0] == "MIXED")
+
+    negative_total = false_weighted + mostly_false_weighted * 0.8
+    positive_total = credible_weighted + mostly_true_weighted * 0.8
+
+    # ── APPLY CONVERGENCE RULES ──
+    convergence_signals = len(negative_votes)
+
+    # FALSE requires strong negative consensus
+    if len([v for v in votes if v[0] == "FALSE"]) >= 2 and negative_total > positive_total * 1.3:
+        verdict = "FALSE"
+        confidence = min(round(negative_total * 1.05), 99)
+    elif false_weighted > 0 and negative_total > positive_total:
+        # 1 engine says FALSE, or strong FALSE weight
+        verdict = "MOSTLY_FALSE" if negative_total < 60 else "FALSE"
+        confidence = min(round(negative_total * 0.9), 90)
+    elif negative_total > positive_total and convergence_signals >= 1:
+        verdict = "MOSTLY_FALSE" if negative_total > 30 else "MIXED"
+        confidence = min(round(max(negative_total, positive_total)), 80)
+    elif positive_total > negative_total:
+        verdict = "CREDIBLE"
+        base = positive_total
+        # Agreement bonus
+        agree_pct = len(credible_votes) / len(votes)
+        if agree_pct >= 0.7:
+            confidence = min(round(base * 1.08), 99)
+        elif agree_pct >= 0.5:
+            confidence = min(round(base), 95)
+        else:
+            confidence = min(round(base * 0.92), 88)
+        confidence = max(confidence, 55)
+        # If not strong enough for CREDIBLE, use MOSTLY_TRUE
+        if confidence < 75 and agree_pct < 0.6:
+            verdict = "MOSTLY_TRUE"
+    else:
+        # Tied or ambiguous
+        verdict = "MIXED"
+        confidence = 50
+
+    # ── FINAL SAFEGUARDS ──
+    # If Google Fact Check found VERIFIED claims, override toward CREDIBLE
+    if gfc_rating == "VERIFIED" and verdict in ("MOSTLY_FALSE", "MIXED", "MOSTLY_TRUE"):
+        verdict = "CREDIBLE"
+        confidence = max(confidence, 75)
+
+    # If Google Fact Check found DEBUNKED, ensure at least MOSTLY_FALSE
+    if gfc_rating == "DEBUNKED" and verdict == "CREDIBLE":
+        verdict = "MIXED"
+        confidence = min(confidence, 70)
+
+    indicators = h["indicators"]
+    category = h["category"]
+    analysis = generate_analysis_text(verdict, confidence, indicators, engines_used, content_type)
+
+    # Fire-and-forget Supabase store
     async def _store():
         try:
             sb = get_supabase()
             sb.table("analyses").insert({
                 "input_text": text[:500],
-                "verdict": o_verdict,
-                "confidence": o_confidence,
-                "analysis": resp["explainability"]["primary_signal"],
-                "indicators": resp["explainability"]["secondary_signals"],
-                "category": "General",
-                "heuristic_score": manip_val,
+                "verdict": verdict,
+                "confidence": confidence,
+                "analysis": analysis,
+                "indicators": indicators,
+                "category": category,
+                "heuristic_score": h["heuristic_score"],
                 "is_public": True,
             }).execute()
         except Exception as e:
             logger.error(f"Supabase error: {e}")
 
     asyncio.create_task(_store())
-    
-    return resp
 
-@router.post("/api/analyze")
-async def analyze_endpoint(req: AnalyzeRequest):
-    return await process_analysis(req.input_type, req.content, req.explicit_type)
+    return AnalyzeResponse(
+        id=None, verdict=verdict, confidence=confidence,
+        analysis=analysis, indicators=indicators, category=category,
+        content_type=content_type,
+        heuristic_score=h["heuristic_score"], hf_confidence=hf_conf,
+        claimbuster_score=cb_score, claimbuster_checkworthy=cb_check,
+        google_factcheck_found=gfc_found, google_factcheck_rating=gfc_rating,
+        google_factcheck_claims=gfc_claims,
+        engines_used=engines_used,
+        ensemble_method=f"ensemble_{len(engines_used)}_engines",
+        source_type=source_type,
+        convergence_signals=convergence_signals,
+    )
 
-@router.post("/api/analyze/file")
+
+@router.post("/api/analyze", response_model=AnalyzeResponse)
+async def analyze_text(req: AnalyzeRequest):
+    """Analyze text for fake news using multi-engine ensemble."""
+    return await run_ensemble(req.text, "text")
+
+
+@router.post("/api/analyze/file", response_model=AnalyzeResponse)
 async def analyze_file(file: UploadFile = File(...)):
+    """Upload PDF, DOCX, or TXT for fake news analysis."""
     ext = file.filename.lower().rsplit(".", 1)[-1] if "." in file.filename else ""
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(400, f"Unsupported file type '.{ext}'. Use PDF, DOCX, or TXT.")
@@ -141,4 +303,4 @@ async def analyze_file(file: UploadFile = File(...)):
     if not is_valid:
         raise HTTPException(422, reason)
 
-    return await process_analysis("text", text[:5000].strip(), "news_report")
+    return await run_ensemble(text[:5000].strip(), f"file:{ext}")

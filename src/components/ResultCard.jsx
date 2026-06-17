@@ -1,13 +1,25 @@
 import { useState, useEffect } from 'react';
-import ClaimList from './ClaimList';
+
+const ENGINE_LABELS = {
+  heuristic_nlp: '🔍 Heuristic NLP',
+  huggingface_bert: '🤗 HuggingFace BERT',
+  claimbuster_deberta: '🔎 ClaimBuster DeBERTa',
+  google_factcheck: '✅ Google Fact Check',
+};
 
 const VERDICT_CONFIG = {
-  'Credible': { icon: '✓', label: 'CREDIBLE', cssClass: 'result-credible', badgeClass: 'badge-credible', barClass: 'bar-credible' },
-  'Likely True': { icon: '◐', label: 'LIKELY TRUE', cssClass: 'result-mostly-true', badgeClass: 'badge-mostly-true', barClass: 'bar-mostly-true' },
-  'Mixed / Misleading': { icon: '⚠', label: 'MIXED / MISLEADING', cssClass: 'result-mixed', badgeClass: 'badge-mixed', barClass: 'bar-mixed' },
-  'Likely False': { icon: '✕', label: 'LIKELY FALSE', cssClass: 'result-mostly-false', badgeClass: 'badge-mostly-false', barClass: 'bar-mostly-false' },
-  'False': { icon: '✕', label: 'FALSE', cssClass: 'result-false', badgeClass: 'badge-false', barClass: 'bar-false' },
-  'Opinion / Not Fact-Checkable': { icon: '💬', label: 'OPINION', cssClass: 'result-neutral', badgeClass: 'badge-neutral', barClass: 'bar-neutral' }
+  CREDIBLE: { icon: '✓', label: 'CREDIBLE', cssClass: 'result-credible', badgeClass: 'badge-credible', barClass: 'bar-credible' },
+  MOSTLY_TRUE: { icon: '◐', label: 'MOSTLY TRUE', cssClass: 'result-mostly-true', badgeClass: 'badge-mostly-true', barClass: 'bar-mostly-true' },
+  MIXED: { icon: '⚠', label: 'MIXED / MISLEADING', cssClass: 'result-mixed', badgeClass: 'badge-mixed', barClass: 'bar-mixed' },
+  MOSTLY_FALSE: { icon: '✕', label: 'MOSTLY FALSE', cssClass: 'result-mostly-false', badgeClass: 'badge-mostly-false', barClass: 'bar-mostly-false' },
+  FALSE: { icon: '✕', label: 'FALSE', cssClass: 'result-false', badgeClass: 'badge-false', barClass: 'bar-false' },
+};
+
+const CONTENT_TYPE_LABELS = {
+  HARD_NEWS: 'Hard News',
+  BREAKING: '⚡ Breaking News',
+  OPINION: '💬 Opinion',
+  SATIRE: '🎭 Satire',
 };
 
 export default function ResultCard({ result }) {
@@ -19,17 +31,16 @@ export default function ResultCard({ result }) {
       setVisible(false);
       setBarWidth(0);
       setTimeout(() => setVisible(true), 50);
-      setTimeout(() => setBarWidth(result.overall_confidence), 200);
+      setTimeout(() => setBarWidth(result.confidence), 200);
     }
   }, [result]);
 
   if (!result) return null;
 
-  const cfg = VERDICT_CONFIG[result.overall_verdict] || VERDICT_CONFIG['Mixed / Misleading'];
-  const explainability = result.explainability || {};
+  const cfg = VERDICT_CONFIG[result.verdict] || VERDICT_CONFIG.MIXED;
 
   const handleShare = () => {
-    const shareText = `VeritasAI: ${cfg.label} (${result.overall_confidence}%)\n\n${explainability.primary_signal}`;
+    const shareText = `VeritasAI: ${cfg.label} (${result.confidence}%)\n\n${result.analysis}`;
     navigator.clipboard.writeText(shareText).then(() => alert('Copied to clipboard!'));
   };
 
@@ -40,14 +51,17 @@ export default function ResultCard({ result }) {
           {cfg.icon} {cfg.label}
         </div>
         <div className="result-meta">
-          <span className="content-type-tag">{result.content_type}</span>
+          <span className="result-category">{result.category}</span>
+          {result.content_type && result.content_type !== 'HARD_NEWS' && (
+            <span className="content-type-tag">{CONTENT_TYPE_LABELS[result.content_type] || result.content_type}</span>
+          )}
         </div>
       </div>
 
       <div className="confidence-section">
         <div className="confidence-label">
-          <span>Overall Confidence Level</span>
-          <span className="confidence-value">{result.overall_confidence}%</span>
+          <span>Confidence Level</span>
+          <span className="confidence-value">{result.confidence}%</span>
         </div>
         <div className="confidence-bar-bg">
           <div
@@ -57,37 +71,72 @@ export default function ResultCard({ result }) {
         </div>
       </div>
 
-      <div className="result-analysis">
-        <h4>Analysis</h4>
-        <p>{explainability.primary_signal}</p>
-      </div>
-
-      {explainability.secondary_signals && explainability.secondary_signals.length > 0 && (
-        <div className="result-indicators">
-          <h4>Key Indicators</h4>
-          <div className="indicator-pills">
-            {explainability.secondary_signals.map((indicator, i) => (
-              <span key={i} className={`indicator-pill indicator-neutral`}>
-                {indicator}
+      {/* Engines Used */}
+      {result.engines_used && result.engines_used.length > 0 && (
+        <div className="result-engines">
+          <h4>Detection Engines ({result.engines_used.length})</h4>
+          <div className="engine-badges">
+            {result.engines_used.map((engine, i) => (
+              <span key={i} className="engine-badge">
+                {ENGINE_LABELS[engine] || engine}
               </span>
             ))}
           </div>
         </div>
       )}
-      
-      {explainability.top_sources && explainability.top_sources.length > 0 && (
+
+      <div className="result-analysis">
+        <h4>Analysis</h4>
+        <p>{result.analysis}</p>
+      </div>
+
+      <div className="result-indicators">
+        <h4>Key Indicators</h4>
+        <div className="indicator-pills">
+          {result.indicators && result.indicators.map((indicator, i) => (
+            <span key={i} className={`indicator-pill indicator-${
+              result.verdict === 'CREDIBLE' || result.verdict === 'MOSTLY_TRUE' ? 'credible' :
+              result.verdict === 'FALSE' || result.verdict === 'MOSTLY_FALSE' ? 'false' : 'neutral'
+            }`}>
+              {indicator}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Google Fact Check Results */}
+      {result.google_factcheck_found && result.google_factcheck_claims && (
         <div className="fact-check-section">
-           <h4>Top Sources</h4>
-           <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.95rem' }}>
-             {explainability.top_sources.map((src, i) => (
-               <li key={i} style={{ marginBottom: '0.25rem' }}>{src}</li>
-             ))}
-           </ul>
+          <h4>🔍 Existing Fact-Checks Found</h4>
+          {result.google_factcheck_rating && (
+            <div className="fact-check-item">
+              <span className="fc-label">Overall Rating:</span>
+              <span className={`fc-value ${result.google_factcheck_rating === 'DEBUNKED' ? 'fc-suspicious' : 'fc-ok'}`}>
+                {result.google_factcheck_rating}
+              </span>
+            </div>
+          )}
+          {result.google_factcheck_claims.map((claim, i) => (
+            <div key={i} className="fact-check-item">
+              <span className="fc-label">{claim.publisher}:</span>
+              <span className="fc-value">{claim.rating}</span>
+            </div>
+          ))}
         </div>
       )}
 
-      {result.claims && result.claims.length > 0 && (
-        <ClaimList claims={result.claims} />
+      {/* ClaimBuster Score */}
+      {result.claimbuster_score != null && (
+        <div className="fact-check-section">
+          <h4>🔎 Claim Analysis</h4>
+          <div className="fact-check-item">
+            <span className="fc-label">Check-worthiness:</span>
+            <span className={`fc-value ${result.claimbuster_checkworthy ? 'fc-suspicious' : 'fc-ok'}`}>
+              {(result.claimbuster_score * 100).toFixed(1)}%
+              {result.claimbuster_checkworthy ? ' — Needs verification' : ' — Low priority'}
+            </span>
+          </div>
+        </div>
       )}
 
       <div className="result-footer">
@@ -99,6 +148,10 @@ export default function ResultCard({ result }) {
           </svg>
           Share
         </button>
+        <span className="result-score">
+          {result.engines_used?.length || 1} engines · {result.source_type || 'text'}
+          {result.convergence_signals > 0 && ` · ${result.convergence_signals} signals`}
+        </span>
       </div>
     </div>
   );

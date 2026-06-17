@@ -29,7 +29,7 @@ export default function DatasetPage() {
         { label: 'API', value: 'HuggingFace Inference' },
         { label: 'Weight', value: '35%' },
       ],
-      patterns: ['Deep semantic analysis', 'Contextual embeddings', 'Transfer learning from large corpus', 'Claim-level veracity check'],
+      patterns: ['Deep semantic analysis', 'Contextual embeddings', 'Transfer learning from large corpus', 'Binary classification (FAKE/REAL)'],
       color: '#f59e0b',
     },
     {
@@ -141,8 +141,8 @@ export default function DatasetPage() {
           </div>
         </div>
         <p className="engine-card-desc">
-          All engines run in parallel and vote on the verdict across a 6-point credibility spectrum: 
-          Credible → Likely True → Mixed/Misleading → Likely False → False → Opinion / Not Fact-Checkable. 
+          All engines run in parallel and vote on the verdict across a 5-point credibility spectrum: 
+          Credible → Mostly True → Mixed/Misleading → Mostly False → False. 
           Each engine's vote is weighted by its assigned importance.
           When engines agree, confidence is boosted. When they disagree, the confidence is capped to reflect uncertainty.
         </p>
