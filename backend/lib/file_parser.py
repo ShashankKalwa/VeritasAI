@@ -1,12 +1,44 @@
 """
 File upload & text extraction utilities.
-Supports: PDF, DOCX, TXT
+Supports: PDF, DOCX, TXT, URL (v2)
 """
 import io
 import re
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def extract_text_from_url(url: str) -> str:
+    """
+    Fetch and extract main article text from a URL using trafilatura.
+    Strips navigation, ads, footers, boilerplate.
+
+    Args:
+        url: The URL to fetch article text from.
+
+    Returns:
+        Plain text content of the article, or empty string on failure.
+    """
+    try:
+        import trafilatura
+        downloaded = trafilatura.fetch_url(url)
+        if not downloaded:
+            logger.warning(f"URL fetch failed: {url}")
+            return ""
+        text = trafilatura.extract(
+            downloaded,
+            include_comments=False,
+            include_tables=True,
+            no_fallback=False,
+        )
+        return text.strip() if text else ""
+    except ImportError:
+        logger.error("trafilatura not installed — run: pip install trafilatura")
+        return ""
+    except Exception as e:
+        logger.error(f"URL extraction error for {url}: {e}")
+        return ""
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:

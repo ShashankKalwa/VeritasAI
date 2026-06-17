@@ -1,24 +1,40 @@
 import { useState, useRef } from 'react';
 
 const SAMPLES = {
-  fake1: "Scientists discover miracle cure suppressed by pharmaceutical companies for decades, whistleblower reveals shocking truth mainstream media refuses to cover",
-  fake2: "BREAKING: Government secretly installing 5G towers that cause mind control, leaked documents expose massive cover-up",
-  real1: "Federal Reserve holds interest rates steady at 5.25% for third consecutive meeting, citing ongoing inflation data according to Reuters",
-  real2: "Study published in Nature confirms new mRNA vaccine shows 94.1% efficacy in Phase 3 clinical trials across 30,000 participants",
+  credible: "Lenovo unveiled a transparent laptop at MWC 2024, featuring a see-through display powered by micro-LED technology according to Reuters",
+  misleading: "Scientists discover miracle cure suppressed by pharmaceutical companies for decades, whistleblower reveals shocking truth mainstream media refuses to cover",
+  opinion: "I think the government should invest more in renewable energy sources. In my view, solar power is the future.",
+  social: "@tech_news The new iPhone 17 is going to be absolutely INSANE 🔥🔥 #Apple #iPhone17 #tech",
 };
+
+const INPUT_TYPES = [
+  { value: 'text', label: '✍️ Article Text', icon: '✍️' },
+  { value: 'url', label: '🔗 URL', icon: '🔗' },
+  { value: 'headline', label: '📰 Headline', icon: '📰' },
+  { value: 'social_post', label: '📱 Social Post', icon: '📱' },
+];
+
+const CONTENT_TYPES = [
+  { value: 'auto', label: 'Auto-detect' },
+  { value: 'news_report', label: 'News Report' },
+  { value: 'opinion_satire', label: 'Opinion / Satire' },
+  { value: 'social_media_post', label: 'Social Media Post' },
+];
 
 export default function ArticleInput({ onAnalyze, loading }) {
   const [text, setText] = useState('');
   const [mode, setMode] = useState('text'); // 'text' or 'file'
+  const [inputType, setInputType] = useState('text');
+  const [contentType, setContentType] = useState('auto');
   const [fileName, setFileName] = useState('');
   const [fileObj, setFileObj] = useState(null);
   const fileRef = useRef(null);
 
   const handleSubmit = () => {
     if (mode === 'file' && fileObj) {
-      onAnalyze(null, fileObj);
+      onAnalyze(null, fileObj, inputType, contentType);
     } else if (text.trim().length >= 10) {
-      onAnalyze(text, null);
+      onAnalyze(text, null, inputType, contentType);
     }
   };
 
@@ -47,6 +63,16 @@ export default function ArticleInput({ onAnalyze, loading }) {
     if (fileRef.current) fileRef.current.value = '';
   };
 
+  const handleSample = (key) => {
+    setText(SAMPLES[key]);
+    setMode('text');
+    clearFile();
+    // Auto-set input type based on sample
+    if (key === 'social') setInputType('social_post');
+    else if (key === 'opinion') setInputType('text');
+    else setInputType('text');
+  };
+
   const canSubmit = mode === 'file' ? !!fileObj : text.trim().length >= 10;
 
   return (
@@ -55,16 +81,16 @@ export default function ArticleInput({ onAnalyze, loading }) {
         Veritas<span style={{ WebkitTextFillColor: '#f87171', color: '#f87171' }}>AI</span>
       </h1>
       <p className="hero-subtitle">
-        Multi-engine AI fake news detection. Paste text or upload a document for instant analysis.
+        Retrieval-augmented misinformation verification. Extract claims, retrieve evidence, and get explainable verdicts.
       </p>
 
-      {/* Mode Toggle */}
+      {/* Mode Toggle: Text vs File */}
       <div className="mode-toggle">
         <button
           className={`mode-btn ${mode === 'text' ? 'active' : ''}`}
           onClick={() => { setMode('text'); clearFile(); }}
         >
-          ✍️ Paste Text
+          ✍️ Text / URL
         </button>
         <button
           className={`mode-btn ${mode === 'file' ? 'active' : ''}`}
@@ -76,33 +102,68 @@ export default function ArticleInput({ onAnalyze, loading }) {
 
       {mode === 'text' ? (
         <>
+          {/* Input Type Selector */}
+          <div className="input-type-selector">
+            {INPUT_TYPES.map(t => (
+              <button
+                key={t.value}
+                className={`input-type-btn ${inputType === t.value ? 'active' : ''}`}
+                onClick={() => setInputType(t.value)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Content Type Dropdown */}
+          <div className="content-type-row">
+            <label className="content-type-label">Content Type:</label>
+            <select
+              className="content-type-select"
+              value={contentType}
+              onChange={e => setContentType(e.target.value)}
+            >
+              {CONTENT_TYPES.map(ct => (
+                <option key={ct.value} value={ct.value}>{ct.label}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="input-wrapper">
             <textarea
               className="article-textarea"
-              placeholder="Paste a news article, headline, or any text to analyze for fake news..."
+              placeholder={
+                inputType === 'url'
+                  ? 'Paste a news article URL to analyze (e.g., https://reuters.com/...)'
+                  : inputType === 'headline'
+                    ? 'Enter a news headline to fact-check...'
+                    : inputType === 'social_post'
+                      ? 'Paste a social media post to verify...'
+                      : 'Paste a news article, headline, or claim to analyze...'
+              }
               value={text}
               onChange={e => setText(e.target.value)}
-              rows={5}
+              rows={inputType === 'headline' ? 2 : 5}
             />
             <div className="input-footer">
-              <span className="char-count">{text.length} / 5000</span>
+              <span className="char-count">{text.length} / 10000</span>
               <button
                 className="btn-primary"
                 onClick={handleSubmit}
                 disabled={loading || !canSubmit}
               >
                 {loading && <span className="spinner"></span>}
-                {loading ? 'Analyzing...' : '🔍 Analyze Article'}
+                {loading ? 'Analyzing...' : '🔍 Verify Claims'}
               </button>
             </div>
           </div>
 
           <div className="sample-row">
             <span className="sample-label">Try samples:</span>
-            <button className="sample-pill fake" onClick={() => setText(SAMPLES.fake1)}>Fake #1</button>
-            <button className="sample-pill fake" onClick={() => setText(SAMPLES.fake2)}>Fake #2</button>
-            <button className="sample-pill real" onClick={() => setText(SAMPLES.real1)}>Real #1</button>
-            <button className="sample-pill real" onClick={() => setText(SAMPLES.real2)}>Real #2</button>
+            <button className="sample-pill real" onClick={() => handleSample('credible')}>Credible News</button>
+            <button className="sample-pill fake" onClick={() => handleSample('misleading')}>Misleading</button>
+            <button className="sample-pill neutral" onClick={() => handleSample('opinion')}>Opinion</button>
+            <button className="sample-pill neutral" onClick={() => handleSample('social')}>Social Post</button>
           </div>
         </>
       ) : (
@@ -140,7 +201,7 @@ export default function ArticleInput({ onAnalyze, loading }) {
                 disabled={loading}
               >
                 {loading && <span className="spinner"></span>}
-                {loading ? 'Analyzing File...' : '🔍 Analyze Document'}
+                {loading ? 'Analyzing File...' : '🔍 Verify Document'}
               </button>
             </div>
           )}

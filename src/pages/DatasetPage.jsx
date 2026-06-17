@@ -6,81 +6,113 @@ export default function DatasetPage() {
       icon: '🔍',
       type: 'Rule-Based',
       status: 'Always Active',
-      description: 'Custom pattern-matching engine with 60+ regex rules analyzing linguistic signals, rhetorical devices, source credibility, emotional manipulation, and conspiracy framing patterns.',
+      description: 'Custom pattern-matching engine with 60+ regex rules analyzing linguistic signals, rhetorical devices, source credibility, emotional manipulation, and conspiracy framing patterns. In v2, provides a manipulation_signal (0-100) where 100 = no manipulation detected.',
       specs: [
         { label: 'Rules', value: '60+' },
         { label: 'Categories', value: '4 pattern groups' },
         { label: 'Latency', value: '<5ms' },
-        { label: 'Weight', value: '30%' },
+        { label: 'v2 Weight', value: '20%' },
       ],
-      patterns: ['Sensationalist language', 'Conspiracy indicators', 'Miracle cure claims', 'Suppression narratives', 'Anonymous sourcing', 'Emotional manipulation'],
+      patterns: ['Manipulation detection', 'Conspiracy indicators', 'Source attribution', 'Emotional manipulation', 'Sensationalist language', 'Credibility markers'],
       color: '#3b82f6',
     },
     {
       id: 2,
-      name: 'HuggingFace BERT Fake News Detector',
+      name: 'HuggingFace BERT Detector',
       icon: '🤗',
-      type: 'Transformer (Pre-trained)',
+      type: 'Transformer (Linguistic Signal)',
       status: 'Active',
-      description: 'Pre-trained BERT-based deep learning model fine-tuned on large-scale fake news datasets. Uses contextual embeddings to understand semantic meaning and detect misinformation patterns.',
+      description: 'Pre-trained BERT-based model fine-tuned on fake news datasets. In v2, repurposed as a linguistic credibility signal (0-100) measuring writing style consistency with credible reporting, not used as a direct truth verdict.',
       specs: [
         { label: 'Model', value: 'jy46604790/Fake-News-Bert-Detect' },
         { label: 'Architecture', value: 'BERT Base' },
-        { label: 'API', value: 'HuggingFace Inference' },
-        { label: 'Weight', value: '35%' },
+        { label: 'v2 Role', value: 'Linguistic signal' },
+        { label: 'v2 Weight', value: '15%' },
       ],
-      patterns: ['Deep semantic analysis', 'Contextual embeddings', 'Transfer learning from large corpus', 'Binary classification (FAKE/REAL)'],
+      patterns: ['Deep semantic analysis', 'Writing style assessment', 'Contextual embeddings', 'Credibility pattern recognition'],
       color: '#f59e0b',
     },
     {
       id: 3,
       name: 'ClaimBuster DeBERTaV2',
       icon: '🔎',
-      type: 'Claim Detection (Transformer)',
+      type: 'Check-Worthiness Gate',
       status: 'Active',
-      description: 'DeBERTa-V2 transformer model trained by the ClaimBuster team to identify check-worthy factual claims. Distinguishes between factual claims that need verification and non-factual statements.',
+      description: 'DeBERTa-V2 transformer that scores claims for check-worthiness (0-100). In v2, acts as a GATE: claims scoring below 40% skip evidence retrieval and are labeled "Opinion / Not Fact-Checkable". Score is informational only — zero weight in the final verdict.',
       specs: [
         { label: 'Model', value: 'whispAI/ClaimBuster-DeBERTaV2' },
-        { label: 'Architecture', value: 'DeBERTa V2' },
-        { label: 'Output', value: 'CFS / UFS / NFS scores' },
-        { label: 'Weight', value: '15%' },
+        { label: 'Gate Threshold', value: '40%' },
+        { label: 'v2 Role', value: 'Check-worthiness gate' },
+        { label: 'v2 Weight', value: '0% (gate only)' },
       ],
-      patterns: ['Check-worthy Factual Statements (CFS)', 'Unimportant Factual Statements (UFS)', 'Non-Factual Statements (NFS)', 'Claim detection scoring'],
+      patterns: ['Check-worthy Factual Statements (CFS)', 'Opinion vs fact separation', 'Claim detection scoring', 'Pipeline efficiency gate'],
       color: '#8b5cf6',
     },
     {
       id: 4,
       name: 'Google Fact Check Tools API',
       icon: '✅',
-      type: 'External Fact-Check Database',
+      type: 'Evidence Source',
       status: 'Active',
-      description: 'Google\'s Fact Check Tools API cross-references input text against a database of verified fact-checks from reputable organizations worldwide including PolitiFact, Snopes, FactCheck.org, and more.',
+      description: 'Cross-references claims against a global database of verified fact-checks from PolitiFact, Snopes, FactCheck.org and more. In v2, treated as high-credibility evidence (85-95 score) fed into the evidence reasoning pipeline.',
       specs: [
         { label: 'Provider', value: 'Google Cloud' },
-        { label: 'Database', value: 'Global fact-checkers' },
-        { label: 'Output', value: 'VERIFIED / DEBUNKED / MIXED' },
-        { label: 'Weight', value: '20%' },
+        { label: 'Credibility', value: '85-95 (fact-checkers)' },
+        { label: 'v2 Role', value: 'Evidence source' },
+        { label: 'v2 Weight', value: '15%' },
       ],
-      patterns: ['PolitiFact ratings', 'Snopes verification', 'FactCheck.org cross-reference', 'International fact-checker network'],
+      patterns: ['PolitiFact ratings', 'Snopes verification', 'AFP fact-checks', 'International fact-checker network'],
       color: '#22c55e',
+    },
+    {
+      id: 5,
+      name: 'Gemini LLM (Claim Extraction + Reasoning)',
+      icon: '🧠',
+      type: 'LLM (New in v2)',
+      status: 'Active',
+      description: 'Google Gemini powers two critical pipeline steps: (1) extracting atomic, checkable claims from article text, and (2) reasoning over retrieved evidence to classify each piece as supporting, contradicting, or unclear relative to each claim.',
+      specs: [
+        { label: 'Extraction', value: 'gemini-2.5-flash' },
+        { label: 'Reasoning', value: 'gemini-2.5-flash' },
+        { label: 'Max Claims', value: '5 per article' },
+        { label: 'v2 Role', value: 'Claim extraction + reasoning' },
+      ],
+      patterns: ['Atomic claim extraction', 'Evidence classification', 'Multi-source reasoning', 'Credibility-weighted analysis'],
+      color: '#ec4899',
+    },
+    {
+      id: 6,
+      name: 'Tavily Search (Evidence Retrieval)',
+      icon: '🌐',
+      type: 'Search API (New in v2)',
+      status: 'Active',
+      description: 'Retrieves real-time evidence from the web for each check-worthy claim. Results are scored by source credibility using a curated database of 50+ domain scores. Prioritizes high-credibility sources while not excluding others.',
+      specs: [
+        { label: 'Provider', value: 'Tavily' },
+        { label: 'Max Evidence', value: '6 per claim' },
+        { label: 'Credibility DB', value: '50+ domains scored' },
+        { label: 'v2 Role', value: 'Evidence retrieval + scoring' },
+      ],
+      patterns: ['Real-time web search', 'Source credibility scoring', 'Evidence deduplication', 'Date-sorted evidence ranking'],
+      color: '#06b6d4',
     },
   ];
 
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1 className="page-title">Detection Engines</h1>
+        <h1 className="page-title">Verification Pipeline</h1>
         <p className="page-subtitle">
-          VeritasAI uses a multi-engine ensemble of 4 AI systems for maximum accuracy
+          VeritasAI v2 uses a 12-step retrieval-augmented pipeline for claim-level verification
         </p>
       </div>
 
-      {/* Ensemble Overview */}
+      {/* Pipeline Overview */}
       <div className="dataset-stats-bar">
-        <span className="ds-stat"><strong>4</strong> Active Engines</span>
-        <span className="ds-stat"><strong>2</strong> Transformer Models</span>
-        <span className="ds-stat"><strong>60+</strong> Heuristic Rules</span>
-        <span className="ds-stat"><strong>Weighted</strong> Ensemble Voting</span>
+        <span className="ds-stat"><strong>6</strong> Pipeline Engines</span>
+        <span className="ds-stat"><strong>12</strong> Pipeline Steps</span>
+        <span className="ds-stat"><strong>50+</strong> Credibility Rules</span>
+        <span className="ds-stat"><strong>Evidence</strong> Weighted Scoring</span>
       </div>
 
       {/* Engine Cards */}
@@ -133,26 +165,27 @@ export default function DatasetPage() {
         <div className="engine-card-header">
           <span className="engine-card-icon">⚡</span>
           <div>
-            <h3 className="engine-card-name">Ensemble Merger</h3>
+            <h3 className="engine-card-name">Ensemble Verdict v2</h3>
             <div className="engine-card-meta">
-              <span className="engine-type-badge">Weighted Voting</span>
+              <span className="engine-type-badge">Credibility-Weighted</span>
               <span className="engine-status-badge">Core System</span>
             </div>
           </div>
         </div>
         <p className="engine-card-desc">
-          All engines run in parallel and vote on the verdict across a 5-point credibility spectrum: 
-          Credible → Mostly True → Mixed/Misleading → Mostly False → False. 
-          Each engine's vote is weighted by its assigned importance.
-          When engines agree, confidence is boosted. When they disagree, the confidence is capped to reflect uncertainty.
+          Per-claim verdicts are computed using credibility-weighted evidence scoring. 
+          5 low-credibility blogs (score 20) do NOT outvote 1 Reuters article (score 95).
+          The overall article verdict uses a worst-case dominant rule: if any claim is "False" 
+          with high confidence, the article verdict is "False".
         </p>
         <div className="engine-specs">
-          <h4>Weight Distribution</h4>
+          <h4>v2 Weight Distribution</h4>
           <div className="specs-grid">
-            <div className="spec-item"><span className="spec-label">Heuristic NLP</span><span className="spec-value">30%</span></div>
-            <div className="spec-item"><span className="spec-label">HF BERT</span><span className="spec-value">35%</span></div>
-            <div className="spec-item"><span className="spec-label">ClaimBuster</span><span className="spec-value">15%</span></div>
-            <div className="spec-item"><span className="spec-label">Google Fact Check</span><span className="spec-value">20%</span></div>
+            <div className="spec-item"><span className="spec-label">Evidence (credibility-weighted)</span><span className="spec-value">50%</span></div>
+            <div className="spec-item"><span className="spec-label">Heuristic NLP</span><span className="spec-value">20%</span></div>
+            <div className="spec-item"><span className="spec-label">BERT Linguistic</span><span className="spec-value">15%</span></div>
+            <div className="spec-item"><span className="spec-label">Google Fact Check</span><span className="spec-value">15%</span></div>
+            <div className="spec-item"><span className="spec-label">ClaimBuster</span><span className="spec-value">0% (gate only)</span></div>
           </div>
         </div>
       </div>

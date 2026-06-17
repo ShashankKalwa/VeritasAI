@@ -15,6 +15,17 @@ ChartJS.register(
   Title, Tooltip, Legend, Filler
 );
 
+// v2 verdict taxonomy colors
+const VERDICT_COLORS = {
+  'Credible': '#22c55e',
+  'Likely True': '#86efac',
+  'Mixed / Misleading': '#eab308',
+  'Likely False': '#f97316',
+  'False': '#ef4444',
+  'Insufficient Evidence': '#94a3b8',
+  'Opinion': '#6366f1',
+};
+
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -53,34 +64,48 @@ export default function DashboardPage() {
     labels: stats.byCategory.map(c => c.category),
     datasets: [
       {
-        label: 'False',
+        label: 'False / Likely False',
         data: stats.byCategory.map(c => c.false),
-        backgroundColor: 'rgba(220, 38, 38, 0.8)',
-        borderColor: '#dc2626',
+        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+        borderColor: '#ef4444',
         borderWidth: 1,
         borderRadius: 4,
       },
       {
-        label: 'Credible',
+        label: 'Mixed / Misleading',
+        data: stats.byCategory.map(c => c.mixed || 0),
+        backgroundColor: 'rgba(234, 179, 8, 0.8)',
+        borderColor: '#eab308',
+        borderWidth: 1,
+        borderRadius: 4,
+      },
+      {
+        label: 'Credible / Likely True',
         data: stats.byCategory.map(c => c.credible),
-        backgroundColor: 'rgba(22, 163, 74, 0.8)',
-        borderColor: '#16a34a',
+        backgroundColor: 'rgba(34, 197, 94, 0.8)',
+        borderColor: '#22c55e',
         borderWidth: 1,
         borderRadius: 4,
       },
     ],
   };
 
+  // v2 verdict distribution doughnut
+  const verdictDist = stats.verdictDistribution || {};
   const doughnutData = {
-    labels: ['False', 'Mixed', 'Credible'],
+    labels: Object.keys(verdictDist).length > 0
+      ? Object.keys(verdictDist)
+      : ['False', 'Mixed / Misleading', 'Credible'],
     datasets: [{
-      data: [stats.falseCount, stats.mixedCount || 0, stats.credibleCount],
-      backgroundColor: [
-        'rgba(220, 38, 38, 0.8)',
-        'rgba(245, 158, 11, 0.8)',
-        'rgba(22, 163, 74, 0.8)',
-      ],
-      borderColor: ['#dc2626', '#f59e0b', '#16a34a'],
+      data: Object.keys(verdictDist).length > 0
+        ? Object.values(verdictDist)
+        : [stats.falseCount, stats.mixedCount || 0, stats.credibleCount],
+      backgroundColor: Object.keys(verdictDist).length > 0
+        ? Object.keys(verdictDist).map(k => (VERDICT_COLORS[k] || '#94a3b8') + 'cc')
+        : ['rgba(239, 68, 68, 0.8)', 'rgba(234, 179, 8, 0.8)', 'rgba(34, 197, 94, 0.8)'],
+      borderColor: Object.keys(verdictDist).length > 0
+        ? Object.keys(verdictDist).map(k => VERDICT_COLORS[k] || '#94a3b8')
+        : ['#ef4444', '#eab308', '#22c55e'],
       borderWidth: 2,
       hoverOffset: 8,
     }],
@@ -105,16 +130,16 @@ export default function DashboardPage() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { 
+      legend: {
         labels: { color: '#9ca3af', font: { family: 'IBM Plex Mono', size: 11 } }
       },
     },
     scales: {
-      x: { 
+      x: {
         ticks: { color: '#6b7280', font: { family: 'IBM Plex Mono', size: 10 } },
         grid: { color: 'rgba(107, 114, 128, 0.1)' }
       },
-      y: { 
+      y: {
         ticks: { color: '#6b7280', font: { family: 'IBM Plex Mono', size: 10 } },
         grid: { color: 'rgba(107, 114, 128, 0.1)' }
       },
@@ -125,9 +150,9 @@ export default function DashboardPage() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { 
+      legend: {
         position: 'bottom',
-        labels: { color: '#9ca3af', font: { family: 'IBM Plex Mono', size: 12 }, padding: 20 }
+        labels: { color: '#9ca3af', font: { family: 'IBM Plex Mono', size: 11 }, padding: 15 }
       },
     },
   };
@@ -136,7 +161,7 @@ export default function DashboardPage() {
     <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Analytics Dashboard</h1>
-        <p className="page-subtitle">Real-time insights from VeritasAI detection engine</p>
+        <p className="page-subtitle">Real-time insights from VeritasAI verification engine</p>
       </div>
 
       <div className="metrics-row">
@@ -147,18 +172,18 @@ export default function DashboardPage() {
           color="#3b82f6"
         />
         <MetricCard
-          title="False Detected"
+          title="False / Likely False"
           value={stats.falseCount}
           subtitle={`${stats.total > 0 ? Math.round(stats.falseCount / stats.total * 100) : 0}% of total`}
           icon="⚠️"
-          color="#dc2626"
+          color="#ef4444"
         />
         <MetricCard
-          title="Credible Verified"
+          title="Credible / Likely True"
           value={stats.credibleCount}
           subtitle={`${stats.total > 0 ? Math.round(stats.credibleCount / stats.total * 100) : 0}% of total`}
           icon="✅"
-          color="#16a34a"
+          color="#22c55e"
         />
         <MetricCard
           title="Avg Confidence"
@@ -170,7 +195,7 @@ export default function DashboardPage() {
 
       <div className="charts-grid">
         <div className="chart-card chart-wide">
-          <h3 className="chart-title">Detection by Category</h3>
+          <h3 className="chart-title">Verification by Category</h3>
           <div className="chart-container">
             <Bar data={categoryBarData} options={chartOptions} />
           </div>

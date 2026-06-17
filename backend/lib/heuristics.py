@@ -277,3 +277,47 @@ def heuristic_analyze(text: str) -> dict:
         "heuristic_score": total_score,
         "false_signal_count": false_signal_count,
     }
+
+
+# ═══════════════════════════════════════════════════════
+# v2 WRAPPER FUNCTIONS — manipulation signal API
+# These wrap the existing heuristic_analyze() function.
+# All 60+ existing rules are left completely untouched.
+# ═══════════════════════════════════════════════════════
+
+def manipulation_signal(text: str) -> float:
+    """
+    v2 wrapper: Run heuristic analysis and return a manipulation signal (0-100).
+
+    Inverts existing heuristic score so that:
+        0   = extreme manipulation detected (bad)
+        100 = no manipulation detected (good)
+
+    The existing heuristic_analyze() returns a total_score where:
+        high positive = many false signals = manipulation
+        negative = credibility signals
+
+    We normalize to a 0-100 scale where 100 = clean, 0 = heavily manipulated.
+    """
+    result = heuristic_analyze(text)
+    if not result:
+        return 50.0  # Neutral
+
+    # heuristic_score: positive = manipulation signals, negative = credibility signals
+    raw_score = result.get("heuristic_score", 0)
+
+    # Normalize: map from roughly [-60, +60] range to [0, 100]
+    # -60 (very credible) → 100 (no manipulation)
+    # +60 (heavy manipulation) → 0 (extreme manipulation)
+    normalized = max(min((-raw_score + 60) / 120 * 100, 100), 0)
+    return round(normalized, 1)
+
+
+async def manipulation_signal_async(text: str) -> float:
+    """
+    Async wrapper for manipulation_signal.
+    The underlying heuristic_analyze() is CPU-bound (regex matching)
+    and runs in microseconds, so this is effectively instant.
+    """
+    return manipulation_signal(text)
+

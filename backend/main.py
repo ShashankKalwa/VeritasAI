@@ -1,6 +1,6 @@
 """
-VeritasAI — FastAPI Backend v2.0
-Multi-Engine Fake News Detection System
+VeritasAI — FastAPI Backend v3.0
+Retrieval-Augmented Misinformation Verification System
 """
 import os
 import logging
@@ -28,28 +28,32 @@ limiter = Limiter(key_func=get_remote_address)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("🚀 VeritasAI backend starting...")
+    logger.info("🚀 VeritasAI v3 backend starting...")
     logger.info("=" * 60)
 
-    # Engine 1: Heuristic (always on)
-    logger.info("✅ Engine 1: Heuristic NLP (60+ rules)")
+    # Signal engines
+    logger.info("✅ Heuristic NLP (60+ rules — manipulation detection)")
 
-    # Engine 2: HF BERT Fake News
     hf = get_hf_detector()
-    logger.info("✅ Engine 2: HF BERT Fake News" if hf.available else "⏭️ Engine 2: Skipped (no HF token)")
+    logger.info("✅ BERT Fake News (linguistic signal)" if hf.available else "⏭️ BERT: Skipped (no HF token)")
 
-    # Engine 3: ClaimBuster DeBERTa
     cb = get_claimbuster_hf()
-    logger.info("✅ Engine 3: ClaimBuster DeBERTaV2" if cb.available else "⏭️ Engine 3: Skipped")
+    logger.info("✅ ClaimBuster DeBERTaV2 (check-worthiness gate)" if cb.available else "⏭️ ClaimBuster: Skipped")
 
-    # Engine 4: Google Fact Check
     gfc = get_google_factcheck()
-    logger.info("✅ Engine 4: Google Fact Check API" if gfc.available else "⏭️ Engine 4: Skipped")
+    logger.info("✅ Google Fact Check API (evidence)" if gfc.available else "⏭️ Google FC: Skipped")
+
+    # v2 pipeline components
+    import os
+    has_llm = bool(os.getenv("GOOGLE_AI_API_KEY", ""))
+    has_search = bool(os.getenv("SEARCH_API_KEY", ""))
+    logger.info("✅ Gemini LLM (claim extraction + reasoning)" if has_llm else "⏭️ Gemini LLM: Stub mode (no API key)")
+    logger.info("✅ Tavily Search (evidence retrieval)" if has_search else "⏭️ Tavily Search: Stub mode (no API key)")
 
     active = 1 + (1 if hf.available else 0) + (1 if cb.available else 0) + (1 if gfc.available else 0)
     logger.info("=" * 60)
-    logger.info(f"🔥 VeritasAI ready — {active}/4 engines active")
-    logger.info("📁 File upload: PDF, DOCX, TXT supported")
+    logger.info(f"🔥 VeritasAI v3 ready — {active}/4 signal engines + {'LLM' if has_llm else 'stub'} + {'search' if has_search else 'stub'}")
+    logger.info("📁 File upload: PDF, DOCX, TXT, URL supported")
     logger.info("=" * 60)
 
     # Pre-warm HF models in background (so first request is fast)
@@ -75,8 +79,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="VeritasAI API",
-    description="Multi-Engine AI Fake News Detection with File Upload Support",
-    version="2.0.0",
+    description="Retrieval-Augmented Misinformation Verification System",
+    version="3.0.0",
     lifespan=lifespan,
 )
 
@@ -100,23 +104,27 @@ app.include_router(dataset_router, tags=["dataset"])
 
 @app.get("/")
 async def root():
+    import os
     hf = get_hf_detector()
     cb = get_claimbuster_hf()
     gfc = get_google_factcheck()
     engines = {
-        "heuristic_nlp": {"status": "active", "type": "rule_engine"},
-        "huggingface_bert": {"status": "active" if hf.available else "inactive", "type": "transformer"},
-        "claimbuster_deberta": {"status": "active" if cb.available else "inactive", "type": "claim_detection"},
-        "google_factcheck": {"status": "active" if gfc.available else "inactive", "type": "fact_check_api"},
+        "heuristic_nlp": {"status": "active", "type": "manipulation_detection"},
+        "huggingface_bert": {"status": "active" if hf.available else "inactive", "type": "linguistic_signal"},
+        "claimbuster_deberta": {"status": "active" if cb.available else "inactive", "type": "check_worthiness_gate"},
+        "google_factcheck": {"status": "active" if gfc.available else "inactive", "type": "evidence_source"},
+        "gemini_llm": {"status": "active" if os.getenv('GOOGLE_AI_API_KEY') else "stub", "type": "claim_extraction_reasoning"},
+        "tavily_search": {"status": "active" if os.getenv('SEARCH_API_KEY') else "stub", "type": "evidence_retrieval"},
     }
     active = sum(1 for e in engines.values() if e["status"] == "active")
     return {
         "name": "VeritasAI API",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "status": "online",
-        "engines": f"{active}/4 active",
+        "pipeline": "retrieval-augmented claim-level verification",
+        "engines": f"{active}/{len(engines)} active",
         "engine_details": engines,
-        "features": ["text_analysis", "file_upload", "multi_engine_ensemble", "google_factcheck"],
+        "features": ["claim_extraction", "evidence_retrieval", "source_credibility", "explainability", "file_upload", "url_analysis"],
     }
 
 

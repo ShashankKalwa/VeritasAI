@@ -14,6 +14,35 @@ function timeAgo(dateStr) {
   return `${days}d ago`;
 }
 
+const VERDICT_COLORS = {
+  'Credible': '#22c55e',
+  'Likely True': '#86efac',
+  'Mixed / Misleading': '#eab308',
+  'Likely False': '#f97316',
+  'False': '#ef4444',
+  'Insufficient Evidence': '#94a3b8',
+  'Opinion / Not Fact-Checkable': '#6366f1',
+  // Old labels (backward compat)
+  'CREDIBLE': '#22c55e',
+  'MOSTLY_TRUE': '#86efac',
+  'MIXED': '#eab308',
+  'MOSTLY_FALSE': '#f97316',
+  'FALSE': '#ef4444',
+};
+
+function mapVerdict(verdict) {
+  const mapping = {
+    'CREDIBLE': 'Credible',
+    'MOSTLY_TRUE': 'Likely True',
+    'MIXED': 'Mixed',
+    'MOSTLY_FALSE': 'Likely False',
+    'FALSE': 'False',
+    'REAL': 'Credible',
+    'FAKE': 'False',
+  };
+  return mapping[verdict] || verdict;
+}
+
 export default function CommunityFeed() {
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,26 +84,14 @@ export default function CommunityFeed() {
     }
   };
 
-  const getBadgeClass = (verdict) => {
-    switch (verdict) {
-      case 'FALSE': return 'badge-false';
-      case 'MOSTLY_FALSE': return 'badge-mostly-false';
-      case 'MIXED': return 'badge-mixed';
-      case 'MOSTLY_TRUE': return 'badge-mostly-true';
-      case 'CREDIBLE': return 'badge-credible';
-      default: return 'badge-mixed';
-    }
+  const getVerdict = (item) => {
+    const v = item.overall_verdict || item.verdict || 'Insufficient Evidence';
+    return mapVerdict(v);
   };
 
-  const getDisplayLabel = (verdict) => {
-    switch (verdict) {
-      case 'FALSE': return 'FALSE';
-      case 'MOSTLY_FALSE': return 'M.FALSE';
-      case 'MIXED': return 'MIXED';
-      case 'MOSTLY_TRUE': return 'M.TRUE';
-      case 'CREDIBLE': return 'CREDIBLE';
-      default: return verdict;
-    }
+  const getColor = (item) => {
+    const v = item.overall_verdict || item.verdict || '';
+    return VERDICT_COLORS[v] || '#94a3b8';
   };
 
   return (
@@ -101,17 +118,28 @@ export default function CommunityFeed() {
           {analyses.map((item) => (
             <div key={item.id} className="feed-item">
               <div className="feed-item-top">
-                <span className={`mini-badge ${getBadgeClass(item.verdict)}`}>
-                  {getDisplayLabel(item.verdict)}
+                <span className="mini-badge" style={{
+                  background: getColor(item) + '20',
+                  color: getColor(item),
+                  borderColor: getColor(item) + '40',
+                }}>
+                  {getVerdict(item)}
                 </span>
-                <span className="feed-confidence">{item.confidence}%</span>
+                <span className="feed-confidence">
+                  {item.overall_confidence || item.confidence || 0}%
+                </span>
               </div>
               <p className="feed-text">
-                {item.input_text.length > 80
+                {(item.input_text || '').length > 80
                   ? item.input_text.substring(0, 80) + '...'
                   : item.input_text}
               </p>
-              <span className="feed-time">{timeAgo(item.created_at)}</span>
+              <div className="feed-meta">
+                <span className="feed-time">{timeAgo(item.created_at)}</span>
+                {item.claim_count > 0 && (
+                  <span className="feed-claims">{item.claim_count} claims</span>
+                )}
+              </div>
             </div>
           ))}
         </div>

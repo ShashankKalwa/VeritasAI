@@ -1,144 +1,269 @@
 import { useState, useEffect } from 'react';
 
-const ENGINE_LABELS = {
-  heuristic_nlp: '🔍 Heuristic NLP',
-  huggingface_bert: '🤗 HuggingFace BERT',
-  claimbuster_deberta: '🔎 ClaimBuster DeBERTa',
-  google_factcheck: '✅ Google Fact Check',
-};
-
 const VERDICT_CONFIG = {
-  CREDIBLE: { icon: '✓', label: 'CREDIBLE', cssClass: 'result-credible', badgeClass: 'badge-credible', barClass: 'bar-credible' },
-  MOSTLY_TRUE: { icon: '◐', label: 'MOSTLY TRUE', cssClass: 'result-mostly-true', badgeClass: 'badge-mostly-true', barClass: 'bar-mostly-true' },
-  MIXED: { icon: '⚠', label: 'MIXED / MISLEADING', cssClass: 'result-mixed', badgeClass: 'badge-mixed', barClass: 'bar-mixed' },
-  MOSTLY_FALSE: { icon: '✕', label: 'MOSTLY FALSE', cssClass: 'result-mostly-false', badgeClass: 'badge-mostly-false', barClass: 'bar-mostly-false' },
-  FALSE: { icon: '✕', label: 'FALSE', cssClass: 'result-false', badgeClass: 'badge-false', barClass: 'bar-false' },
+  'Credible':                      { icon: '✓', color: '#22c55e', bgColor: '#22c55e18' },
+  'Likely True':                   { icon: '◐', color: '#86efac', bgColor: '#86efac18' },
+  'Mixed / Misleading':            { icon: '⚠', color: '#eab308', bgColor: '#eab30818' },
+  'Likely False':                  { icon: '✕', color: '#f97316', bgColor: '#f9731618' },
+  'False':                         { icon: '✕', color: '#ef4444', bgColor: '#ef444418' },
+  'Insufficient Evidence':         { icon: '?', color: '#94a3b8', bgColor: '#94a3b818' },
+  'Opinion / Not Fact-Checkable':  { icon: '💬', color: '#6366f1', bgColor: '#6366f118' },
 };
 
-const CONTENT_TYPE_LABELS = {
-  HARD_NEWS: 'Hard News',
-  BREAKING: '⚡ Breaking News',
-  OPINION: '💬 Opinion',
-  SATIRE: '🎭 Satire',
-};
+function getVerdictCfg(verdict) {
+  return VERDICT_CONFIG[verdict] || VERDICT_CONFIG['Insufficient Evidence'];
+}
 
 export default function ResultCard({ result }) {
   const [visible, setVisible] = useState(false);
-  const [barWidth, setBarWidth] = useState(0);
+  const [expandedClaim, setExpandedClaim] = useState(0);
+  const [activeEvidenceTab, setActiveEvidenceTab] = useState({});
+  const [showExplainability, setShowExplainability] = useState(false);
 
   useEffect(() => {
     if (result) {
       setVisible(false);
-      setBarWidth(0);
+      setExpandedClaim(0);
+      setActiveEvidenceTab({});
+      setShowExplainability(false);
       setTimeout(() => setVisible(true), 50);
-      setTimeout(() => setBarWidth(result.confidence), 200);
     }
   }, [result]);
 
   if (!result) return null;
 
-  const cfg = VERDICT_CONFIG[result.verdict] || VERDICT_CONFIG.MIXED;
+  const overallCfg = getVerdictCfg(result.overall_verdict);
+  const claims = result.claims || [];
+  const explainability = result.explainability || {};
 
   const handleShare = () => {
-    const shareText = `VeritasAI: ${cfg.label} (${result.confidence}%)\n\n${result.analysis}`;
+    const shareText = `VeritasAI: ${result.overall_verdict} (${result.overall_confidence || '?'}%)\n\n${explainability.primary_signal || ''}`;
     navigator.clipboard.writeText(shareText).then(() => alert('Copied to clipboard!'));
   };
 
   return (
-    <div className={`result-card ${visible ? 'visible' : ''} ${cfg.cssClass}`}>
-      <div className="result-header">
-        <div className={`verdict-badge ${cfg.badgeClass}`}>
-          {cfg.icon} {cfg.label}
+    <div className={`result-card ${visible ? 'visible' : ''}`}
+         style={{ borderColor: overallCfg.color + '40' }}>
+
+      {/* ── Overall Verdict Header ── */}
+      <div className="result-header-v2">
+        <div className="verdict-badge-v2" style={{
+          background: overallCfg.bgColor,
+          borderColor: overallCfg.color + '60',
+          color: overallCfg.color,
+        }}>
+          <span className="verdict-icon">{overallCfg.icon}</span>
+          <span className="verdict-label">{result.overall_verdict}</span>
         </div>
-        <div className="result-meta">
-          <span className="result-category">{result.category}</span>
-          {result.content_type && result.content_type !== 'HARD_NEWS' && (
-            <span className="content-type-tag">{CONTENT_TYPE_LABELS[result.content_type] || result.content_type}</span>
-          )}
-        </div>
+        {result.overall_confidence != null && (
+          <div className="confidence-pill" style={{ color: overallCfg.color }}>
+            {result.overall_confidence}% confidence
+          </div>
+        )}
+        {result.content_type && result.content_type !== 'news_report' && (
+          <span className="content-type-tag-v2">{result.content_type.replace(/_/g, ' ')}</span>
+        )}
       </div>
 
-      <div className="confidence-section">
-        <div className="confidence-label">
-          <span>Confidence Level</span>
-          <span className="confidence-value">{result.confidence}%</span>
+      {/* ── Primary Signal ── */}
+      {explainability.primary_signal && (
+        <div className="primary-signal">
+          <span className="signal-icon">💡</span>
+          <span>{explainability.primary_signal}</span>
         </div>
-        <div className="confidence-bar-bg">
-          <div
-            className={`confidence-bar-fill ${cfg.barClass}`}
-            style={{ width: `${barWidth}%` }}
-          />
-        </div>
-      </div>
+      )}
 
-      {/* Engines Used */}
-      {result.engines_used && result.engines_used.length > 0 && (
-        <div className="result-engines">
-          <h4>Detection Engines ({result.engines_used.length})</h4>
-          <div className="engine-badges">
-            {result.engines_used.map((engine, i) => (
-              <span key={i} className="engine-badge">
-                {ENGINE_LABELS[engine] || engine}
-              </span>
-            ))}
+      {/* ── Per-Claim Breakdown ── */}
+      {claims.length > 0 && (
+        <div className="claims-section">
+          <h4 className="section-title">
+            Claims Analyzed ({claims.length})
+          </h4>
+          <div className="claims-list">
+            {claims.map((claim, idx) => {
+              const claimCfg = getVerdictCfg(claim.verdict);
+              const isExpanded = expandedClaim === idx;
+              const evidenceTab = activeEvidenceTab[idx] || 'supporting';
+              const evidence = claim.evidence || {};
+
+              return (
+                <div key={claim.claim_id || idx} className="claim-item"
+                     style={{ borderLeftColor: claimCfg.color }}>
+                  {/* Claim header — clickable to expand */}
+                  <div className="claim-header" onClick={() => setExpandedClaim(isExpanded ? -1 : idx)}>
+                    <div className="claim-header-left">
+                      <span className="claim-number">#{idx + 1}</span>
+                      <span className="claim-text-preview">{claim.claim_text}</span>
+                    </div>
+                    <div className="claim-header-right">
+                      <span className="claim-verdict-mini" style={{
+                        background: claimCfg.bgColor,
+                        color: claimCfg.color,
+                        borderColor: claimCfg.color + '40',
+                      }}>
+                        {claimCfg.icon} {claim.verdict}
+                      </span>
+                      {claim.confidence != null && (
+                        <span className="claim-confidence">{claim.confidence}%</span>
+                      )}
+                      <span className={`claim-chevron ${isExpanded ? 'expanded' : ''}`}>▾</span>
+                    </div>
+                  </div>
+
+                  {/* Expanded claim details */}
+                  {isExpanded && (
+                    <div className="claim-details">
+                      {/* Evidence Tabs */}
+                      <div className="evidence-tabs">
+                        {[
+                          { key: 'supporting', label: 'Supporting', count: (evidence.supporting || []).length, color: '#22c55e' },
+                          { key: 'contradicting', label: 'Contradicting', count: (evidence.contradicting || []).length, color: '#ef4444' },
+                          { key: 'unclear', label: 'Unclear', count: (evidence.unclear || []).length, color: '#94a3b8' },
+                        ].map(tab => (
+                          <button
+                            key={tab.key}
+                            className={`evidence-tab ${evidenceTab === tab.key ? 'active' : ''}`}
+                            onClick={() => setActiveEvidenceTab(prev => ({ ...prev, [idx]: tab.key }))}
+                            style={evidenceTab === tab.key ? { borderBottomColor: tab.color, color: tab.color } : {}}
+                          >
+                            {tab.label} ({tab.count})
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Evidence Items */}
+                      <div className="evidence-list">
+                        {(evidence[evidenceTab] || []).length === 0 ? (
+                          <p className="evidence-empty">No {evidenceTab} evidence found.</p>
+                        ) : (
+                          (evidence[evidenceTab] || []).map((item, eidx) => (
+                            <div key={eidx} className="evidence-item">
+                              <div className="evidence-item-header">
+                                <span className="evidence-source">{item.source_name || 'Unknown'}</span>
+                                {item.credibility_score > 0 && (
+                                  <span className={`credibility-badge ${
+                                    item.credibility_score >= 80 ? 'cred-high' :
+                                    item.credibility_score >= 50 ? 'cred-mid' : 'cred-low'
+                                  }`}>
+                                    {item.credibility_score}
+                                  </span>
+                                )}
+                                {item.published_date && (
+                                  <span className="evidence-date">{item.published_date}</span>
+                                )}
+                              </div>
+                              {item.title && <p className="evidence-title">{item.title}</p>}
+                              {item.snippet && <p className="evidence-snippet">{item.snippet}</p>}
+                              {item.url && (
+                                <a href={item.url} target="_blank" rel="noopener noreferrer"
+                                   className="evidence-link">View source →</a>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Claim Reasoning */}
+                      {claim.reasoning && (
+                        <div className="claim-reasoning">
+                          <span className="reasoning-label">AI Reasoning:</span>
+                          <span>{claim.reasoning}</span>
+                        </div>
+                      )}
+
+                      {/* Model Signals for this claim */}
+                      {claim.model_signals && (
+                        <div className="model-signals">
+                          <div className="signal-row">
+                            <span className="signal-name">BERT Linguistic</span>
+                            <div className="signal-bar-bg">
+                              <div className="signal-bar-fill" style={{
+                                width: `${claim.model_signals.bert_linguistic_signal || 50}%`,
+                                backgroundColor: (claim.model_signals.bert_linguistic_signal || 50) > 60 ? '#22c55e' : '#eab308',
+                              }} />
+                            </div>
+                            <span className="signal-value">{claim.model_signals.bert_linguistic_signal || 50}</span>
+                          </div>
+                          <div className="signal-row">
+                            <span className="signal-name">Manipulation Check</span>
+                            <div className="signal-bar-bg">
+                              <div className="signal-bar-fill" style={{
+                                width: `${claim.model_signals.heuristic_manipulation_signal || 50}%`,
+                                backgroundColor: (claim.model_signals.heuristic_manipulation_signal || 50) > 60 ? '#22c55e' : '#eab308',
+                              }} />
+                            </div>
+                            <span className="signal-value">{claim.model_signals.heuristic_manipulation_signal || 50}</span>
+                          </div>
+                          <div className="signal-row">
+                            <span className="signal-name">Check-Worthiness</span>
+                            <div className="signal-bar-bg">
+                              <div className="signal-bar-fill" style={{
+                                width: `${claim.model_signals.claimbuster_check_worthiness || 50}%`,
+                                backgroundColor: '#a855f7',
+                              }} />
+                            </div>
+                            <span className="signal-value">{claim.model_signals.claimbuster_check_worthiness || 50}</span>
+                          </div>
+                          {claim.model_signals.google_factcheck_match && (
+                            <div className="signal-row gfc-match">
+                              <span className="signal-name">✅ Google Fact Check Match</span>
+                              <span className="signal-value gfc-detail">
+                                {claim.model_signals.google_factcheck_details || 'Match found'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      <div className="result-analysis">
-        <h4>Analysis</h4>
-        <p>{result.analysis}</p>
-      </div>
+      {/* ── Explainability Panel ── */}
+      <div className="explainability-section">
+        <button className="explainability-toggle" onClick={() => setShowExplainability(!showExplainability)}>
+          <span>🔬 Explainability Report</span>
+          <span className={`claim-chevron ${showExplainability ? 'expanded' : ''}`}>▾</span>
+        </button>
 
-      <div className="result-indicators">
-        <h4>Key Indicators</h4>
-        <div className="indicator-pills">
-          {result.indicators && result.indicators.map((indicator, i) => (
-            <span key={i} className={`indicator-pill indicator-${
-              result.verdict === 'CREDIBLE' || result.verdict === 'MOSTLY_TRUE' ? 'credible' :
-              result.verdict === 'FALSE' || result.verdict === 'MOSTLY_FALSE' ? 'false' : 'neutral'
-            }`}>
-              {indicator}
-            </span>
-          ))}
-        </div>
-      </div>
+        {showExplainability && (
+          <div className="explainability-content">
+            {explainability.primary_signal && (
+              <div className="explain-primary">
+                <strong>Primary Signal:</strong> {explainability.primary_signal}
+              </div>
+            )}
 
-      {/* Google Fact Check Results */}
-      {result.google_factcheck_found && result.google_factcheck_claims && (
-        <div className="fact-check-section">
-          <h4>🔍 Existing Fact-Checks Found</h4>
-          {result.google_factcheck_rating && (
-            <div className="fact-check-item">
-              <span className="fc-label">Overall Rating:</span>
-              <span className={`fc-value ${result.google_factcheck_rating === 'DEBUNKED' ? 'fc-suspicious' : 'fc-ok'}`}>
-                {result.google_factcheck_rating}
-              </span>
-            </div>
-          )}
-          {result.google_factcheck_claims.map((claim, i) => (
-            <div key={i} className="fact-check-item">
-              <span className="fc-label">{claim.publisher}:</span>
-              <span className="fc-value">{claim.rating}</span>
-            </div>
-          ))}
-        </div>
-      )}
+            {explainability.secondary_signals && explainability.secondary_signals.length > 0 && (
+              <div className="explain-secondary">
+                <strong>Supporting Signals:</strong>
+                <ul>
+                  {explainability.secondary_signals.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-      {/* ClaimBuster Score */}
-      {result.claimbuster_score != null && (
-        <div className="fact-check-section">
-          <h4>🔎 Claim Analysis</h4>
-          <div className="fact-check-item">
-            <span className="fc-label">Check-worthiness:</span>
-            <span className={`fc-value ${result.claimbuster_checkworthy ? 'fc-suspicious' : 'fc-ok'}`}>
-              {(result.claimbuster_score * 100).toFixed(1)}%
-              {result.claimbuster_checkworthy ? ' — Needs verification' : ' — Low priority'}
-            </span>
+            {explainability.top_sources && explainability.top_sources.length > 0 && (
+              <div className="explain-sources">
+                <strong>Top Sources:</strong>
+                <ul>
+                  {explainability.top_sources.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
+      {/* ── Footer ── */}
       <div className="result-footer">
         <button className="btn-share" onClick={handleShare}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -149,8 +274,8 @@ export default function ResultCard({ result }) {
           Share
         </button>
         <span className="result-score">
-          {result.engines_used?.length || 1} engines · {result.source_type || 'text'}
-          {result.convergence_signals > 0 && ` · ${result.convergence_signals} signals`}
+          {claims.length} claim{claims.length !== 1 ? 's' : ''} analyzed
+          {result.content_type && ` · ${result.content_type.replace(/_/g, ' ')}`}
         </span>
       </div>
     </div>

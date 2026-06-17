@@ -3,28 +3,52 @@ import { supabase } from './supabase';
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 /**
- * Analyze an article/headline for fake news via backend API
- * Uses ensemble ML model + heuristic engine on the server
+ * Analyze text/URL for misinformation via v2 pipeline
+ * Sends input_type and content_type for the new claim-level analysis
  */
-export async function analyzeArticle(text) {
+export async function analyzeArticle(text, inputType = 'text', contentType = 'auto') {
   if (!text || text.trim().length < 10) {
     throw new Error('Text must be at least 10 characters long');
   }
 
   const cleanText = text.replace(/<[^>]*>/g, '').trim();
-  if (cleanText.length > 5000) {
-    throw new Error('Text must be under 5000 characters');
+  if (cleanText.length > 10000) {
+    throw new Error('Text must be under 10000 characters');
   }
 
   const response = await fetch(`${API_URL}/api/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: cleanText }),
+    body: JSON.stringify({
+      text: cleanText,
+      input_type: inputType,
+      content_type: contentType,
+    }),
   });
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(err.detail || 'Analysis failed. Please try again.');
+  }
+
+  return await response.json();
+}
+
+/**
+ * Analyze a file upload
+ */
+export async function analyzeFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_URL}/api/analyze/file`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'File analysis failed');
   }
 
   return await response.json();

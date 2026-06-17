@@ -198,3 +198,86 @@ def get_google_factcheck():
     global _gfc
     if _gfc is None: _gfc = GoogleFactChecker()
     return _gfc
+
+
+# ═══════════════════════════════════════════════════════
+# v2 WRAPPER FUNCTIONS — new async-friendly signal APIs
+# These wrap the existing classes above. Do NOT modify
+# the existing HuggingFaceDetector, ClaimBusterHF, or
+# GoogleFactChecker classes.
+# ═══════════════════════════════════════════════════════
+
+async def bert_signal_async(text: str) -> float:
+    """
+    v2 wrapper: Run BERT fake news detector and return a
+    linguistic_credibility_signal (0-100).
+
+    Mapping:
+        REAL with 90% confidence → signal = 90
+        FAKE with 80% confidence → signal = 20
+    """
+    hf = get_hf_detector()
+    if not hf.available:
+        return 50.0  # Neutral signal when unavailable
+
+    try:
+        import asyncio
+        result = await asyncio.wait_for(hf.predict(text), timeout=5.0)
+        if not result:
+            return 50.0
+        verdict = result.get("verdict", "REAL")
+        confidence = result.get("confidence", 50) / 100.0  # 0-1
+
+        if verdict == "REAL":
+            # REAL: higher confidence → higher signal
+            return round(confidence * 100, 1)
+        else:
+            # FAKE: higher confidence → lower signal
+            return round((1.0 - confidence) * 100, 1)
+    except Exception as e:
+        logger.warning(f"BERT signal error: {e}")
+        return 50.0
+
+
+async def claimbuster_score_async(claim_text: str) -> float:
+    """
+    v2 wrapper: Run ClaimBuster on a single claim and return
+    check-worthiness score (0-100).
+    """
+    cb = get_claimbuster_hf()
+    if not cb.available:
+        return 50.0  # Default mid-range
+
+    try:
+        import asyncio
+        result = await asyncio.wait_for(cb.check(claim_text), timeout=5.0)
+        if not result:
+            return 50.0
+        cfs_score = result.get("cfs_score", 0.5)
+        return round(cfs_score * 100, 1)
+    except Exception as e:
+        logger.warning(f"ClaimBuster score error: {e}")
+        return 50.0
+
+
+# Sync-style wrappers (for use in non-async contexts)
+def bert_signal(text: str) -> float:
+    """Sync wrapper — prefer bert_signal_async in async routes."""
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        # If already in an async context, this won't work — use _async version
+        return 50.0
+    except RuntimeError:
+        return asyncio.run(bert_signal_async(text))
+
+
+def claimbuster_score(claim_text: str) -> float:
+    """Sync wrapper — prefer claimbuster_score_async in async routes."""
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        return 50.0
+    except RuntimeError:
+        return asyncio.run(claimbuster_score_async(claim_text))
+

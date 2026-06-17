@@ -1,5 +1,5 @@
 """
-GET /api/dataset — Browsable dataset endpoint
+GET /api/dataset — Browsable dataset endpoint (v2 label mapping)
 """
 import logging
 from fastapi import APIRouter, Query
@@ -7,6 +7,19 @@ from lib.supabase_client import get_supabase
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Display label mapping: DB values → v2 taxonomy
+LABEL_MAP = {
+    "fake": "False",
+    "real": "Credible",
+    "FAKE": "False",
+    "REAL": "Credible",
+}
+
+
+def _map_label(label: str) -> str:
+    """Map old REAL/FAKE labels to v2 taxonomy for display."""
+    return LABEL_MAP.get(label, label)
 
 
 @router.get("/api/dataset")
@@ -22,8 +35,15 @@ async def get_dataset(
         sb = get_supabase()
         query = sb.table("dataset").select("*", count="exact")
 
+        # Map v2 filter labels back to DB values for querying
         if label and label != "all":
-            query = query.eq("label", label)
+            # Accept both old and new label names
+            db_label = label
+            if label == "False":
+                db_label = "fake"
+            elif label == "Credible":
+                db_label = "real"
+            query = query.eq("label", db_label)
         if category and category != "All":
             query = query.eq("category", category)
         if search:
@@ -34,11 +54,16 @@ async def get_dataset(
 
         resp = query.order("id").range(from_idx, to_idx).execute()
 
+        # Map labels for display
+        data = resp.data or []
+        for row in data:
+            row["display_label"] = _map_label(row.get("label", ""))
+
         total = resp.count or 0
         total_pages = (total + page_size - 1) // page_size
 
         return {
-            "data": resp.data or [],
+            "data": data,
             "count": total,
             "page": page,
             "pageSize": page_size,
@@ -59,16 +84,16 @@ async def get_dataset_stats():
         data = resp.data or []
 
         total = len(data)
-        fake_count = sum(1 for d in data if d["label"] == "fake")
-        real_count = sum(1 for d in data if d["label"] == "real")
+        false_count = sum(1 for d in data if d["label"] in ("fake", "FAKE"))
+        credible_count = sum(1 for d in data if d["label"] in ("real", "REAL"))
         categories = list(set(d["category"] for d in data))
 
         return {
             "total": total,
-            "fakeCount": fake_count,
-            "realCount": real_count,
+            "falseCount": false_count,
+            "credibleCount": credible_count,
             "categories": categories,
         }
     except Exception as e:
         logger.error(f"Dataset stats error: {e}")
-        return {"total": 0, "fakeCount": 0, "realCount": 0, "categories": []}
+        return {"total": 0, "falseCount": 0, "credibleCount": 0, "categories": []}
