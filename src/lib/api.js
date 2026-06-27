@@ -64,13 +64,49 @@ export async function getStats() {
 }
 
 /**
- * Get recent analyses for feed from backend
+ * Get recent analyses for the live feed
  */
-export async function getRecentAnalyses(limit = 10) {
-  const response = await fetch(`${API_URL}/api/feed?limit=${limit}`);
-  if (!response.ok) throw new Error('Failed to fetch feed');
+export async function getLiveFeed(limit = 20, offset = 0, source = 'all', verdict = '') {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString(),
+    source: source,
+  });
+  if (verdict) params.set('verdict', verdict);
+
+  const response = await fetch(`${API_URL}/api/feed?${params}`);
+  if (!response.ok) throw new Error('Failed to fetch live feed');
   const result = await response.json();
   return result.data;
+}
+
+/**
+ * Get trending claims
+ */
+export async function getTrendingClaims(limit = 20, offset = 0, verdict = '') {
+  const params = new URLSearchParams({
+    limit: limit.toString(),
+    offset: offset.toString(),
+  });
+  if (verdict) params.set('verdict', verdict);
+
+  const response = await fetch(`${API_URL}/api/trending?${params}`);
+  if (!response.ok) throw new Error('Failed to fetch trending claims');
+  const result = await response.json();
+  return result.data;
+}
+
+/**
+ * Submit a vote on an article
+ */
+export async function submitVote(newsId, vote) {
+  const response = await fetch(`${API_URL}/api/vote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ news_id: newsId, vote }),
+  });
+  if (!response.ok) throw new Error('Failed to submit vote');
+  return await response.json();
 }
 
 /**

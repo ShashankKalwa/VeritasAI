@@ -19,6 +19,7 @@ from routes.analyze import router as analyze_router
 from routes.stats import router as stats_router
 from routes.feed import router as feed_router
 from routes.dataset import router as dataset_router
+from routes.trending import router as trending_router
 from lib.ml_model import get_hf_detector, get_claimbuster_hf, get_google_factcheck
 
 logging.basicConfig(level=logging.INFO)
@@ -73,7 +74,22 @@ async def lifespan(app: FastAPI):
             pass
     asyncio.create_task(_warmup())
 
+    # Start trending cron scheduler (Phase 8)
+    try:
+        from jobs.trending_cron import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        logger.warning(f"Trending scheduler start failed: {e}")
+
     yield
+
+    # Shutdown scheduler
+    try:
+        from jobs.trending_cron import scheduler
+        if scheduler.running:
+            scheduler.shutdown(wait=False)
+    except Exception:
+        pass
     logger.info("👋 Shutting down")
 
 
@@ -100,6 +116,7 @@ app.include_router(analyze_router, tags=["analyze"])
 app.include_router(stats_router, tags=["stats"])
 app.include_router(feed_router, tags=["feed"])
 app.include_router(dataset_router, tags=["dataset"])
+app.include_router(trending_router, tags=["trending"])
 
 
 @app.get("/")

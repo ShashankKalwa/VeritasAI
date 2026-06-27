@@ -53,10 +53,10 @@ export default function CommunityFeed() {
 
     // Realtime subscription
     const channel = supabase
-      .channel('public-analyses')
+      .channel('public-analyzed-news')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'analyses' },
+        { event: 'INSERT', schema: 'public', table: 'analyzed_news' },
         (payload) => {
           setAnalyses(prev => [payload.new, ...prev].slice(0, 10));
         }
@@ -71,9 +71,8 @@ export default function CommunityFeed() {
   const fetchRecent = async () => {
     try {
       const { data } = await supabase
-        .from('analyses')
+        .from('analyzed_news')
         .select('*')
-        .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(10);
       setAnalyses(data || []);
@@ -130,15 +129,12 @@ export default function CommunityFeed() {
                 </span>
               </div>
               <p className="feed-text">
-                {(item.input_text || '').length > 80
-                  ? item.input_text.substring(0, 80) + '...'
-                  : item.input_text}
+                {(item.headline || item.input_text || '').length > 80
+                  ? (item.headline || item.input_text).substring(0, 80) + '...'
+                  : (item.headline || item.input_text)}
               </p>
               <div className="feed-meta">
                 <span className="feed-time">{timeAgo(item.created_at)}</span>
-                {item.claim_count > 0 && (
-                  <span className="feed-claims">{item.claim_count} claims</span>
-                )}
               </div>
             </div>
           ))}

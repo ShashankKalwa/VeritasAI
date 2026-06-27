@@ -58,7 +58,16 @@ export default function DashboardPage() {
     );
   }
 
-  if (!stats) return null;
+  if (!stats) {
+    return (
+      <div className="page-container">
+        <div className="empty-state">
+          <h3>No Dashboard Data Available</h3>
+          <p>We couldn't load the analytics data. Make sure the backend is running and you have performed some verifications.</p>
+        </div>
+      </div>
+    );
+  }
 
   const categoryBarData = {
     labels: stats.byCategory.map(c => c.category),

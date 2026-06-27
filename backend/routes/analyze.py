@@ -193,8 +193,21 @@ async def run_v2_pipeline(text: str, input_type: str = "text", content_type: str
             text=article_text,
         )
 
-        # Fire-and-forget Supabase store
+        # Fire-and-forget Supabase store (legacy analyses table)
         _store_analysis(article_text, response, source_type)
+
+        # Fire-and-forget: store in analyzed_news + trending_claims (Phase 8)
+        async def _store_feed():
+            try:
+                from lib.feed_manager import store_analysis as feed_store
+                await feed_store(
+                    pipeline_result=response,
+                    source="user_submitted",
+                    headline=article_text[:200],
+                )
+            except Exception as e:
+                logger.error(f"Feed store error: {e}")
+        asyncio.create_task(_store_feed())
 
         return response
 

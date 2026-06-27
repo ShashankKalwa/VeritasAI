@@ -7,6 +7,7 @@ export default function Navbar() {
 
   const links = [
     { to: '/', label: 'Detect' },
+    { to: '/feed', label: 'Trending Claims' },
     { to: '/dataset', label: 'Engines' },
     { to: '/dashboard', label: 'Dashboard' },
   ];

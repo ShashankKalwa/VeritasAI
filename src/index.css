@@ -2,6 +2,8 @@
    VeritasAI — Dark Newsroom Design System
    AI-Powered Fake News Detection
    ====================================================== */
+@import './feed.css';
+@import './animations.css';
 
 /* === CSS Custom Properties === */
 :root {

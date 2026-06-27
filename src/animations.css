@@ -1,0 +1,87 @@
+/* src/animations.css - Subtle, soothing UI animations */
+
+/* 1. Soothing Fade & Slide Up */
+@keyframes soothingSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Apply the slide-up animation globally to main containers and cards */
+.page-container, 
+.chart-card, 
+.metric-card, 
+.trending-claim-card, 
+.result-card, 
+.input-wrapper,
+.live-feed-card {
+  animation: soothingSlideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+/* Staggered delays for cascading entrance effects */
+.metrics-row > *:nth-child(1) { animation-delay: 0.05s; }
+.metrics-row > *:nth-child(2) { animation-delay: 0.1s; }
+.metrics-row > *:nth-child(3) { animation-delay: 0.15s; }
+.metrics-row > *:nth-child(4) { animation-delay: 0.2s; }
+
+.charts-grid > *:nth-child(1) { animation-delay: 0.2s; }
+.charts-grid > *:nth-child(2) { animation-delay: 0.3s; }
+.charts-grid > *:nth-child(3) { animation-delay: 0.4s; }
+
+.trending-grid > *:nth-child(1) { animation-delay: 0.05s; }
+.trending-grid > *:nth-child(2) { animation-delay: 0.1s; }
+.trending-grid > *:nth-child(3) { animation-delay: 0.15s; }
+.trending-grid > *:nth-child(4) { animation-delay: 0.2s; }
+.trending-grid > *:nth-child(5) { animation-delay: 0.25s; }
+.trending-grid > *:nth-child(6) { animation-delay: 0.3s; }
+
+/* 2. Gentle Float for Icons */
+@keyframes gentleFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.metric-icon, .file-drop-icon {
+  animation: gentleFloat 4s ease-in-out infinite;
+}
+
+/* 3. Smoother Hovers & Scale Effects */
+.btn-primary, .nav-link, .trending-claim-card, .chart-card, .metric-card {
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.trending-claim-card:hover, .metric-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 4. Soft Glow for active inputs */
+.input-wrapper {
+  transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.input-wrapper:focus-within {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(220, 38, 38, 0.15);
+}
+
+/* 5. Loading Pulse */
+@keyframes softPulse {
+  0% { opacity: 0.6; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0.6; transform: scale(0.95); }
+}
+
+.loading-state .spinner {
+  animation: softPulse 2.5s infinite ease-in-out;
+}

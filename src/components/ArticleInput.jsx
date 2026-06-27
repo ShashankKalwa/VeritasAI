@@ -8,9 +8,9 @@ const SAMPLES = {
 };
 
 const INPUT_TYPES = [
-  { value: 'text', label: '✍️ Article Text', icon: '✍️' },
-  { value: 'url', label: '🔗 URL', icon: '🔗' },
   { value: 'headline', label: '📰 Headline', icon: '📰' },
+  { value: 'url', label: '🔗 URL', icon: '🔗' },
+  { value: 'text', label: '✍️ Article Text', icon: '✍️' },
   { value: 'social_post', label: '📱 Social Post', icon: '📱' },
 ];
 
@@ -24,7 +24,7 @@ const CONTENT_TYPES = [
 export default function ArticleInput({ onAnalyze, loading }) {
   const [text, setText] = useState('');
   const [mode, setMode] = useState('text'); // 'text' or 'file'
-  const [inputType, setInputType] = useState('text');
+  const [inputType, setInputType] = useState('headline');
   const [contentType, setContentType] = useState('auto');
   const [fileName, setFileName] = useState('');
   const [fileObj, setFileObj] = useState(null);
