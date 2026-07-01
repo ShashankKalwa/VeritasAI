@@ -51,6 +51,10 @@ export default function CommunityFeed() {
     // Initial fetch
     fetchRecent();
 
+    const getNormalizedText = (item) => {
+      return (item.headline || item.input_text || '').trim().substring(0, 50).toLowerCase();
+    };
+
     // Realtime subscription
     const channel = supabase
       .channel('public-analyzed-news')
@@ -58,7 +62,12 @@ export default function CommunityFeed() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'analyzed_news' },
         (payload) => {
-          setAnalyses(prev => [payload.new, ...prev].slice(0, 10));
+          setAnalyses(prev => {
+            if (prev.some(item => item.id === payload.new.id)) return prev;
+            const newText = getNormalizedText(payload.new);
+            if (prev.some(item => getNormalizedText(item) === newText)) return prev;
+            return [payload.new, ...prev].slice(0, 10);
+          });
         }
       )
       .subscribe();
@@ -74,8 +83,23 @@ export default function CommunityFeed() {
         .from('analyzed_news')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(10);
-      setAnalyses(data || []);
+        .limit(20); // fetch more to ensure we have enough after deduplication
+
+      if (data) {
+        const uniqueData = [];
+        const seen = new Set();
+        for (const item of data) {
+          const text = (item.headline || item.input_text || '').trim().substring(0, 50).toLowerCase();
+          if (!seen.has(text)) {
+            seen.add(text);
+            uniqueData.push(item);
+            if (uniqueData.length === 10) break;
+          }
+        }
+        setAnalyses(uniqueData);
+      } else {
+        setAnalyses([]);
+      }
     } catch (err) {
       console.error('Feed error:', err);
     } finally {

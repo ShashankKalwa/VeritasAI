@@ -7,6 +7,7 @@ Retrieves real-time evidence from trusted sources for each check-worthy claim.
 import os
 import logging
 from urllib.parse import urlparse
+from lib import cache
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +28,20 @@ async def retrieve_evidence(claim_text: str) -> list[dict]:
         logger.warning("SEARCH_API_KEY not set — returning empty evidence")
         return []
 
-    if provider == "tavily":
-        return await _tavily_search(claim_text, api_key)
+    cached = cache.get_tavily(claim_text)
+    if cached is not None:
+        logger.info(f"Cache HIT (tavily): {claim_text[:50]}")
+        return cached
 
-    logger.warning(f"Unknown search provider: {provider}")
-    return []
+    logger.info(f"Cache MISS (tavily): {claim_text[:50]}")
+    results = []
+    if provider == "tavily":
+        results = await _tavily_search(claim_text, api_key)
+    else:
+        logger.warning(f"Unknown search provider: {provider}")
+
+    cache.set_tavily(claim_text, results)
+    return results
 
 
 async def _tavily_search(claim_text: str, api_key: str) -> list[dict]:
@@ -83,8 +93,14 @@ async def retrieve_factcheck(claim_text: str) -> list[dict]:
         if not gfc.available:
             return []
 
+        cached = cache.get_factcheck(claim_text)
+        if cached is not None:
+            logger.info(f"Cache HIT (factcheck): {claim_text[:50]}")
+            return cached
+
         result = await gfc.check(claim_text)
         if not result or not result.get("found"):
+            cache.set_factcheck(claim_text, [])
             return []
 
         evidence = []
@@ -108,6 +124,7 @@ async def retrieve_factcheck(claim_text: str) -> list[dict]:
                 "is_factcheck": True,  # Flag for special handling
             })
 
+        cache.set_factcheck(claim_text, evidence)
         logger.info(f"Google Fact Check: {len(evidence)} matches")
         return evidence
 

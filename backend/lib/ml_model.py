@@ -9,6 +9,7 @@ Engines:
 import os
 import logging
 import httpx
+from lib import cache
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,11 @@ class HuggingFaceDetector:
     async def predict(self, text: str) -> dict | None:
         if not self.available:
             return None
+            
+        cached = cache.get_hf("bert", text)
+        if cached is not None:
+            return cached
+
         try:
             c = await _client()
             resp = await c.post(
@@ -76,7 +82,10 @@ class HuggingFaceDetector:
             verdict = "FAKE" if fake_score > real_score else "REAL"
             confidence = min(round(max(fake_score, real_score) * 100), 99)
             logger.info(f"HF: {verdict} ({confidence}%)")
-            return {"verdict": verdict, "confidence": confidence, "engine": "huggingface_bert"}
+            
+            result = {"verdict": verdict, "confidence": confidence, "engine": "huggingface_bert"}
+            cache.set_hf("bert", text, result)
+            return result
         except httpx.TimeoutException:
             logger.warning("HF timeout")
             return None
@@ -96,6 +105,11 @@ class ClaimBusterHF:
     async def check(self, text: str) -> dict | None:
         if not self.available:
             return None
+            
+        cached = cache.get_hf("claimbuster", text)
+        if cached is not None:
+            return cached
+
         try:
             c = await _client()
             resp = await c.post(
@@ -120,12 +134,14 @@ class ClaimBusterHF:
                     nfs_score = score
             is_checkworthy = cfs_score > 0.5
             logger.info(f"ClaimBuster: CFS={cfs_score:.3f}, cw={is_checkworthy}")
-            return {
+            result = {
                 "cfs_score": round(cfs_score, 4),
                 "nfs_score": round(nfs_score, 4),
                 "is_checkworthy": is_checkworthy,
                 "engine": "claimbuster_deberta",
             }
+            cache.set_hf("claimbuster", text, result)
+            return result
         except Exception as e:
             logger.error(f"ClaimBuster error: {e}")
             return None

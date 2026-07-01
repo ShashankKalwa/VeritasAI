@@ -2,8 +2,9 @@
 GET /api/stats — Dashboard statistics endpoint (v2 taxonomy)
 """
 import logging
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from lib.supabase_client import get_supabase
+from lib.limiter import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -22,7 +23,8 @@ def _get_verdict(row):
 
 
 @router.get("/api/stats")
-async def get_stats():
+@limiter.limit("60/minute")
+async def get_stats(request: Request):
     """Return aggregated statistics for the dashboard."""
     try:
         sb = get_supabase()
@@ -107,3 +109,14 @@ async def get_stats():
             "avgConfidence": 0, "byCategory": [], "confidenceBuckets": {},
             "verdictDistribution": {},
         }
+
+@router.get("/api/cache/stats")
+@limiter.limit("30/minute")
+async def get_cache_status(request: Request):
+    """Return health status of the Upstash Redis cache."""
+    try:
+        from lib.cache import get_cache_stats
+        return await get_cache_stats()
+    except Exception as e:
+        logger.error(f"Cache stats error: {e}")
+        return {"redis_connected": False, "error": str(e)}

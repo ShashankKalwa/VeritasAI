@@ -10,6 +10,7 @@ import re
 import json
 import uuid
 import logging
+from lib import cache
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +99,11 @@ async def extract_claims(
         logger.warning("GOOGLE_AI_API_KEY not set — using stub claims")
         return _get_stub_claims(text)
 
+    cached = cache.get_extraction(text)
+    if cached is not None:
+        logger.info("Cache HIT (extraction)")
+        return cached
+
     try:
         from google import genai
 
@@ -135,18 +141,16 @@ async def extract_claims(
                 if "claim_id" not in c:
                     c["claim_id"] = str(uuid.uuid4())
                 if "source_span" not in c:
-                    c["source_span"] = c["claim_text"]
+                    c["source_span"] = c.get("claim_text", "")
                 valid_claims.append(c)
+        claims = valid_claims
 
-        if not valid_claims:
-            logger.warning("LLM returned no valid claims — falling back to stub")
-            return _get_stub_claims(text)
+        cache.set_extraction(text, claims)
+        logger.info(f"LLM extraction: {len(claims)} claims")
+        return claims[:mc]
 
-        logger.info(f"Extracted {len(valid_claims)} claims via Gemini")
-        return valid_claims
-
-    except json.JSONDecodeError as e:
-        logger.error(f"Claim extraction JSON parse error: {e}")
+    except json.JSONDecodeError:
+        logger.error("LLM returned invalid JSON — falling back to stub")
         return _get_stub_claims(text)
     except Exception as e:
         logger.error(f"Claim extraction error: {e}")

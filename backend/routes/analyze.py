@@ -9,10 +9,12 @@ import os
 import re
 import logging
 import asyncio
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Depends
 from pydantic import BaseModel, field_validator
 from lib.file_parser import extract_text, is_meaningful_content
 from lib.supabase_client import get_supabase
+from lib.limiter import limiter
+from lib.daily_quota import check_daily_quota
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -262,7 +264,12 @@ def _store_analysis(text: str, response: dict, source_type: str):
 
 
 @router.post("/api/analyze")
-async def analyze_text(req: AnalyzeRequest):
+@limiter.limit("5/minute;200/day")
+async def analyze_text(
+    request: Request,
+    req: AnalyzeRequest,
+    _quota=Depends(check_daily_quota)
+):
     """Analyze text for misinformation using v2 retrieval-augmented pipeline."""
     return await run_v2_pipeline(
         text=req.text,
@@ -273,7 +280,12 @@ async def analyze_text(req: AnalyzeRequest):
 
 
 @router.post("/api/analyze/file")
-async def analyze_file(file: UploadFile = File(...)):
+@limiter.limit("5/minute;200/day")
+async def analyze_file(
+    request: Request,
+    file: UploadFile = File(...),
+    _quota=Depends(check_daily_quota)
+):
     """Upload PDF, DOCX, or TXT for misinformation analysis."""
     ext = file.filename.lower().rsplit(".", 1)[-1] if "." in file.filename else ""
     if ext not in ALLOWED_EXTENSIONS:

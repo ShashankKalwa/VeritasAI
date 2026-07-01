@@ -2,8 +2,9 @@
 GET /api/dataset — Browsable dataset endpoint (v2 label mapping)
 """
 import logging
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from lib.supabase_client import get_supabase
+from lib.limiter import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -23,7 +24,9 @@ def _map_label(label: str) -> str:
 
 
 @router.get("/api/dataset")
+@limiter.limit("30/minute")
 async def get_dataset(
+    request: Request,
     label: str = Query(default="all"),
     category: str = Query(default="All"),
     search: str = Query(default=""),
@@ -76,7 +79,8 @@ async def get_dataset(
 
 
 @router.get("/api/dataset/stats")
-async def get_dataset_stats():
+@limiter.limit("30/minute")
+async def get_dataset_stats(request: Request):
     """Return dataset summary statistics."""
     try:
         sb = get_supabase()

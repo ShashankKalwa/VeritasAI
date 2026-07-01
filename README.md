@@ -17,7 +17,7 @@ VeritasAI is an advanced AI platform that verifies claims in news articles by ex
 | 8 | **Source Credibility** | 50+ domain database | Score evidence sources (0-100) |
 | 9a | **BERT Signal** | `jy46604790/Fake-News-Bert-Detect` | Linguistic credibility signal (15% weight) |
 | 9b | **Heuristic Signal** | 60+ regex rules | Manipulation detection (20% weight) |
-| 10 | **Evidence Reasoning** | Gemini 2.5 Flash | Classify evidence as supporting/contradicting/unclear |
+| 10 | **Evidence Reasoning** | Gemini 3.1 Pro Preview | Classify evidence as supporting/contradicting/unclear |
 | 11 | **Ensemble Verdict** | Credibility-weighted | Per-claim + article verdict (50% evidence weight) |
 | 12 | **Explainability** | Custom | Primary/secondary signals, top sources |
 
@@ -43,8 +43,8 @@ VeritasAI is an advanced AI platform that verifies claims in news articles by ex
 |-------|-----------|
 | **Frontend** | React 19 + Vite 8 + Chart.js + React Router v7 |
 | **Backend** | FastAPI (Python) + Uvicorn + SlowAPI (Rate Limiter) + APScheduler (Cron Jobs) |
-| **AI/ML** | Gemini 2.5 Flash, HuggingFace, ClaimBuster DeBERTa |
-| **Evidence** | Tavily Search API + Google Fact Check API |
+| **AI/ML** | Gemini 2.5 Flash & 3.1 Pro Preview, HuggingFace, ClaimBuster DeBERTa |
+| **Evidence** | Tavily Search API + Google Fact Check API + NewsAPI |
 | **Database** | Supabase (PostgreSQL + Realtime) |
 | **Styling** | Vanilla CSS (dark newsroom theme) |
 
@@ -92,6 +92,22 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 ---
 
+## 🐳 Run Backend with Docker
+
+```bash
+cp backend/.env.example backend/.env
+# Fill in your API keys
+
+docker-compose up --build
+# Backend → http://localhost:8000
+# Backend docs → http://localhost:8000/docs
+```
+
+The frontend is deployed via Vercel and runs locally with `npm run dev`
+as usual — it is not containerized.
+
+---
+
 ## 🔑 Environment Variables
 
 ### Frontend (`.env`)
@@ -116,7 +132,7 @@ GOOGLE_FACTCHECK_API_KEY=your_google_factcheck_key
 # v3: LLM (claim extraction + reasoning)
 GOOGLE_AI_API_KEY=your_gemini_api_key
 LLM_MODEL_EXTRACT=gemini-2.5-flash
-LLM_MODEL_REASON=gemini-2.5-flash
+LLM_MODEL_REASON=gemini-3.1-pro-preview
 
 # v3: Evidence retrieval
 SEARCH_API_PROVIDER=tavily
@@ -127,6 +143,14 @@ MAX_CLAIMS=5
 MAX_EVIDENCE_PER_CLAIM=6
 CLAIMBUSTER_GATE_THRESHOLD=40
 SOURCE_CREDIBILITY_CONFIG_PATH=backend/config/source_credibility.json
+
+# Live Feed Cron (Trending)
+NEWS_API_KEY=your_newsapi_key
+NEWS_API_PROVIDER=newsapi
+NEWS_API_LANGUAGE=en
+NEWS_API_PAGE_SIZE=10
+FEED_CRON_INTERVAL_HOURS=3
+FEED_SKIP_IF_ANALYZED_WITHIN_HOURS=12
 ```
 
 ---
@@ -146,6 +170,12 @@ SOURCE_CREDIBILITY_CONFIG_PATH=backend/config/source_credibility.json
 | `POST` | `/api/trending/refresh` | Manually trigger trending claims scheduler job |
 | `GET` | `/health` | API health check |
 | `GET` | `/docs` | Swagger API documentation |
+
+---
+
+## 🤖 For AI Assistants & Developers
+
+If you are an AI coding assistant, an LLM, or a developer looking to understand the deepest technical details of VeritasAI (including full database schemas, JSONB structures, and the complete data flow of the 12-step pipeline), please read the **[AI_CONTEXT.md](AI_CONTEXT.md)** file in the root directory. It serves as a comprehensive system prompt and architecture guide.
 
 ---
 
@@ -210,9 +240,5 @@ VeritasAI/
 ---
 
 ## 👥 Team
-
-Built for **AITHON 2025** Hackathon
-
----
 
 *VeritasAI — See Through the Noise* 🔍

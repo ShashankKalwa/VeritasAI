@@ -6,17 +6,31 @@ POST /api/vote     — thumbs up/down on a verdict
 POST /api/trending/refresh — manually trigger trending cron
 """
 import logging
-from fastapi import APIRouter, HTTPException, Query
+import os
+from fastapi import APIRouter, HTTPException, Query, Request, Header, Depends
 from pydantic import BaseModel
 from lib.supabase_client import get_supabase
-from lib.feed_manager import get_feed, get_trending
+from lib.feed_manager import get_trending
+from lib.limiter import limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+ADMIN_KEY = os.getenv("ADMIN_API_KEY")
+
+def require_admin_key(x_admin_key: str = Header(default=None)):
+    if not ADMIN_KEY:
+        return
+    if x_admin_key != ADMIN_KEY:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. X-Admin-Key header required."
+        )
 
 @router.get("/api/trending")
+@limiter.limit("60/minute")
 async def trending_claims(
+    request: Request,
     limit: int = Query(default=20, le=50),
     offset: int = Query(default=0, ge=0),
     verdict: str = Query(default=None),
@@ -30,25 +44,6 @@ async def trending_claims(
         return {"data": [], "count": 0}
 
 
-@router.get("/api/feed")
-async def live_feed(
-    limit: int = Query(default=20, le=50),
-    offset: int = Query(default=0, ge=0),
-    source: str = Query(default="all"),
-    verdict: str = Query(default=None),
-):
-    """Return recently analyzed articles from analyzed_news, newest first."""
-    try:
-        items = await get_feed(
-            limit=limit,
-            offset=offset,
-            source=source,
-            verdict=verdict,
-        )
-        return {"data": items, "count": len(items)}
-    except Exception as e:
-        logger.error(f"Feed endpoint error: {e}")
-        return {"data": [], "count": 0}
 
 
 class VoteRequest(BaseModel):
@@ -57,7 +52,8 @@ class VoteRequest(BaseModel):
 
 
 @router.post("/api/vote")
-async def submit_vote(req: VoteRequest):
+@limiter.limit("20/minute")
+async def submit_vote(request: Request, req: VoteRequest):
     """Simple thumbs-up / thumbs-down on a verdict."""
     if req.vote not in ("true", "false"):
         raise HTTPException(400, "Vote must be 'true' or 'false'")
@@ -104,7 +100,11 @@ async def submit_vote(req: VoteRequest):
 
 
 @router.post("/api/trending/refresh")
-async def refresh_trending():
+@limiter.limit("2/minute")
+async def refresh_trending(
+    request: Request,
+    _admin=Depends(require_admin_key)
+):
     """Manually trigger the trending cron job."""
     try:
         from jobs.trending_cron import run_trending_analysis
