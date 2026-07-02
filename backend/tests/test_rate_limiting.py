@@ -45,7 +45,7 @@ class TestAnalyzeRateLimit:
 
     def test_different_ips_have_independent_limits(self):
         """Two different IPs must have independent rate limit buckets."""
-        payload = {"input_type": "text", "text": "Test."}
+        payload = {"input_type": "text", "text": "Rate limit test."}
 
         # Exhaust limit for IP A
         for _ in range(5):
@@ -66,7 +66,7 @@ class TestAnalyzeRateLimit:
         """429 responses must include a Retry-After header."""
         test_ip = "10.0.3.1"
         headers = {"X-Forwarded-For": test_ip}
-        payload = {"input_type": "text", "text": "Test."}
+        payload = {"input_type": "text", "text": "Rate limit test."}
 
         for _ in range(5):
             client.post("/api/analyze", json=payload, headers=headers)

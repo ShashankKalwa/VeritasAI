@@ -11,7 +11,7 @@ def test_score_evidence_known_domain(monkeypatch):
         "__known_lowquality__": [],
         "__default__": 40
     }
-    import backend.lib.source_credibility as sc
+    import lib.source_credibility as sc
     monkeypatch.setattr(sc, "_load_config", lambda: mock_config)
 
     evidence = [{"url": "https://www.reuters.com/article/123"}]
@@ -26,7 +26,7 @@ def test_score_evidence_unknown_domain(monkeypatch):
         "__known_lowquality__": [],
         "__default__": 40
     }
-    import backend.lib.source_credibility as sc
+    import lib.source_credibility as sc
     monkeypatch.setattr(sc, "_load_config", lambda: mock_config)
 
     evidence = [{"url": "https://unknown-random-blog.com/post"}]
@@ -41,7 +41,7 @@ def test_score_evidence_www_stripping(monkeypatch):
         "__known_lowquality__": [],
         "__default__": 40
     }
-    import backend.lib.source_credibility as sc
+    import lib.source_credibility as sc
     monkeypatch.setattr(sc, "_load_config", lambda: mock_config)
 
     evidence = [{"url": "https://www.nytimes.com/world"}]
@@ -61,7 +61,7 @@ def test_five_low_cred_vs_one_high_cred(monkeypatch):
         "__known_lowquality_score__": 12,
         "__default__": 40
     }
-    import backend.lib.source_credibility as sc
+    import lib.source_credibility as sc
     monkeypatch.setattr(sc, "_load_config", lambda: mock_config)
 
     high_evidence = [{"url": "https://reuters.com/1"}]

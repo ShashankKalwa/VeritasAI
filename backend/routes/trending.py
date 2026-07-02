@@ -16,12 +16,11 @@ from lib.limiter import limiter
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-ADMIN_KEY = os.getenv("ADMIN_API_KEY")
-
 def require_admin_key(x_admin_key: str = Header(default=None)):
-    if not ADMIN_KEY:
+    admin_key = os.getenv("ADMIN_API_KEY")
+    if not admin_key:
         return
-    if x_admin_key != ADMIN_KEY:
+    if x_admin_key != admin_key:
         raise HTTPException(
             status_code=403,
             detail="Access denied. X-Admin-Key header required."
