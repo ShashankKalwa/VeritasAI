@@ -68,10 +68,15 @@ async def run_v2_pipeline(text: str, input_type: str = "text", content_type: str
             raise HTTPException(400, "Could not extract meaningful text from input.")
 
         # Step 3: Claim extraction (LLM)
-        claims = await asyncio.wait_for(
-            extract_claims(article_text, detected_content_type),
-            timeout=12.0,
-        )
+        try:
+            claims = await asyncio.wait_for(
+                extract_claims(article_text, detected_content_type),
+                timeout=15.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Claim extraction timed out. Falling back to stub claims.")
+            from lib.claim_extractor import _get_stub_claims
+            claims = _get_stub_claims(article_text)
 
         if not claims:
             return format_response(
@@ -132,8 +137,9 @@ async def run_v2_pipeline(text: str, input_type: str = "text", content_type: str
                 evidence = score_evidence(evidence)
 
                 # Step 10: Evidence reasoning (LLM)
-                reasoning_result = await reason(
-                    claim_text, evidence, bert_sig, manip_sig
+                reasoning_result = await asyncio.wait_for(
+                    reason(claim_text, evidence, bert_sig, manip_sig),
+                    timeout=30.0
                 )
                 claim["reasoning"] = reasoning_result
 
