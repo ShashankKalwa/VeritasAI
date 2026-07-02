@@ -1,5 +1,5 @@
 import pytest
-from backend.lib.source_credibility import score_evidence
+from lib.source_credibility import score_evidence
 
 # Assuming backend/config/source_credibility.json has "reuters.com": 95
 # If it's not present, we can mock _load_config, but let's test the public API first.

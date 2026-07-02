@@ -1,5 +1,5 @@
 import pytest
-from backend.lib.ensemble_verdict_v2 import compute_claim_verdict
+from lib.ensemble_verdict_v2 import compute_claim_verdict
 
 def test_compute_claim_verdict_credible():
     reasoning = {
@@ -64,5 +64,5 @@ def test_claimbuster_does_not_affect_score():
     # ClaimBuster score is NOT a parameter in compute_claim_verdict
     # It's explicitly stated to have 0 weight. We prove this by showing
     # the function signature doesn't take it, and weights dict has it at 0.
-    from backend.lib.ensemble_verdict_v2 import WEIGHTS
+    from lib.ensemble_verdict_v2 import WEIGHTS
     assert WEIGHTS["claimbuster"] == 0.0

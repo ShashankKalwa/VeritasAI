@@ -1,6 +1,6 @@
 import pytest
 try:
-    from backend.lib.embedding_service import entity_overlap_ok, should_merge
+    from lib.embedding_service import entity_overlap_ok, should_merge
 except ImportError:
     # Fallback mock for CI if Phase 9 file is missing
     def entity_overlap_ok(text1, text2):

@@ -8,11 +8,7 @@ export default function FeedPage() {
   const [trendingLoading, setTrendingLoading] = useState(true);
 
   // Fetch initial data
-  useEffect(() => {
-    fetchTrending();
-  }, []);
-
-  const fetchTrending = async () => {
+  async function fetchTrending() {
     setTrendingLoading(true);
     try {
       const data = await getTrendingClaims(20);
@@ -22,7 +18,11 @@ export default function FeedPage() {
     } finally {
       setTrendingLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    fetchTrending();
+  }, []);
 
   return (
     <div className="feed-page">
