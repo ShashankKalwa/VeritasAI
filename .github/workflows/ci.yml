@@ -48,7 +48,7 @@ jobs:
           UPSTASH_REDIS_TOKEN: "test-token"
           UPSTASH_REDIS_PROTOCOL_URL: ""
         run: |
-          pytest -v --tb=short
+          python -m pytest -v --tb=short
 
   frontend-lint-and-build:
     name: Frontend — Lint & Build
