@@ -114,7 +114,7 @@ def compute_claim_verdict(
         gfc_details = reasoning.get("google_factcheck_details", "")
         if gfc_details:
             details_lower = gfc_details.lower()
-            if any(w in details_lower for w in ["false", "debunked", "misleading", "incorrect"]):
+            if any(w in details_lower for w in ["false", "debunked", "misleading", "incorrect", "pants on fire", "satire", "fake", "hoax"]):
                 gfc_score = -0.8
             elif any(w in details_lower for w in ["true", "correct", "verified", "accurate"]):
                 gfc_score = 0.8

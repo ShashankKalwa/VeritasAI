@@ -129,7 +129,7 @@ async def reason(
         prompt = SYSTEM_PROMPT + "\n\n" + user
 
         response = await client.aio.models.generate_content(
-            model=os.getenv("LLM_MODEL_REASON", "gemini-2.5-flash"),
+            model=os.getenv("LLM_MODEL_REASON", "gemini-2.5-pro"),
             contents=[
                 {"role": "user", "parts": [{"text": prompt}]}
             ],
@@ -195,7 +195,8 @@ def _heuristic_reasoning(
         # Check for negation/contradiction keywords
         has_negation = any(w in snippet_lower for w in
                           ["false", "debunked", "misleading", "incorrect",
-                           "not true", "denied", "refuted", "hoax", "fake"])
+                           "not true", "denied", "refuted", "hoax", "fake",
+                           "pants on fire", "satire", "rumor", "conspiracy", "untrue"])
 
         enriched = {**item, "stance": "unclear"}
 
