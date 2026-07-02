@@ -18,6 +18,8 @@ export default [
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      'react/jsx-uses-react': 'error',
+      'react/jsx-uses-vars': 'error',
       'react/prop-types': 'off',
       'no-unused-vars': 'warn',
     },

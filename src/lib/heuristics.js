@@ -75,7 +75,7 @@ const REAL_SIGNALS = [
   { pattern: /(researcher|scientist|professor|dr\.|expert)s?\s+(say|found|report|confirm|publish)/i, weight: -9, label: 'Expert attribution' },
   { pattern: /\b(senate|congress|parliament|supreme\s+court)\b/i, weight: -6, label: 'Legislative institution reference' },
   { pattern: /voted?\s+\d+-\d+/i, weight: -8, label: 'Specific vote count' },
-  { pattern: /\$\d+[\.\d]*\s*(billion|million|trillion)/i, weight: -7, label: 'Specific financial figure' },
+  { pattern: /\$\d+[.\d]*\s*(billion|million|trillion)/i, weight: -7, label: 'Specific financial figure' },
   { pattern: /regulation|legislation|amendment|bill/i, weight: -5, label: 'Legal/regulatory language' },
 ];
 

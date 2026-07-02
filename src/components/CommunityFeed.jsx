@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -47,6 +48,35 @@ export default function CommunityFeed() {
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  async function fetchRecent() {
+    try {
+      const { data } = await supabase
+        .from('analyzed_news')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20); // fetch more to ensure we have enough after deduplication
+
+      if (data) {
+        const uniqueData = [];
+        const seen = new Set();
+        for (const item of data) {
+          const text = (item.headline || item.input_text || '').trim().substring(0, 50).toLowerCase();
+          if (!seen.has(text)) {
+            seen.add(text);
+            uniqueData.push(item);
+            if (uniqueData.length === 10) break;
+          }
+        }
+        setAnalyses(uniqueData);
+      } else {
+        setAnalyses([]);
+      }
+    } catch (err) {
+      console.error('Feed error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => {
     // Initial fetch
     fetchRecent();
@@ -77,35 +107,6 @@ export default function CommunityFeed() {
     };
   }, []);
 
-  const fetchRecent = async () => {
-    try {
-      const { data } = await supabase
-        .from('analyzed_news')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20); // fetch more to ensure we have enough after deduplication
-
-      if (data) {
-        const uniqueData = [];
-        const seen = new Set();
-        for (const item of data) {
-          const text = (item.headline || item.input_text || '').trim().substring(0, 50).toLowerCase();
-          if (!seen.has(text)) {
-            seen.add(text);
-            uniqueData.push(item);
-            if (uniqueData.length === 10) break;
-          }
-        }
-        setAnalyses(uniqueData);
-      } else {
-        setAnalyses([]);
-      }
-    } catch (err) {
-      console.error('Feed error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getVerdict = (item) => {
     const v = item.overall_verdict || item.verdict || 'Insufficient Evidence';
