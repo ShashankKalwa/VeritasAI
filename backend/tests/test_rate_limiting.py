@@ -14,8 +14,13 @@ os.environ.setdefault("UPSTASH_REDIS_TOKEN", "test-token")
 
 from main import app
 
-client = TestClient(app, raise_server_exceptions=False)
+@pytest.fixture(autouse=True)
+def mock_pipeline(monkeypatch):
+    async def dummy(*args, **kwargs):
+        return {"overall_verdict": "Mock", "claims": []}
+    monkeypatch.setattr("routes.analyze.run_v2_pipeline", dummy)
 
+client = TestClient(app, raise_server_exceptions=False)
 
 class TestAnalyzeRateLimit:
     """POST /api/analyze enforces 5 requests/minute per IP."""

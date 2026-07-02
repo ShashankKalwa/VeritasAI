@@ -27,10 +27,16 @@ def mock_network_calls(monkeypatch):
             pass
 
     class MockAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
         async def __aenter__(self):
             return self
             
         async def __aexit__(self, *args):
+            pass
+
+        async def aclose(self):
             pass
 
         async def get(self, *args, **kwargs):
@@ -44,7 +50,7 @@ def mock_network_calls(monkeypatch):
 
     # Mock supabase client if used
     try:
-        import backend.lib.supabase_client as sc
+        import lib.supabase_client as sc
         class MockSupabase:
             def table(self, name):
                 return self
@@ -61,6 +67,6 @@ def mock_network_calls(monkeypatch):
                     data = []
                 return MockSupabaseResponse()
                 
-        monkeypatch.setattr(sc, "get_client", lambda: MockSupabase())
+        monkeypatch.setattr(sc, "get_supabase", lambda: MockSupabase())
     except ImportError:
         pass
