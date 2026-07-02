@@ -22,7 +22,7 @@ router = APIRouter()
 MAX_FILE_SIZE = 5 * 1024 * 1024
 ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt", "text", "md"}
 CLAIMBUSTER_GATE_THRESHOLD = int(os.getenv("CLAIMBUSTER_GATE_THRESHOLD", "40"))
-PIPELINE_TIMEOUT = 25  # seconds — Render free tier kills at 30s
+PIPELINE_TIMEOUT = 55  # seconds (increased to prevent first-time timeouts)
 
 
 class AnalyzeRequest(BaseModel):

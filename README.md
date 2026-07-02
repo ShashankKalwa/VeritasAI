@@ -34,6 +34,9 @@ VeritasAI is an advanced AI platform that verifies claims in news articles by ex
 - 🔴 **Live Feed** — WebSocket-powered community detection feed (recently analyzed articles).
 - 🔥 **Trending Claims** — Aggregated database of trending claims sorted by check counts, updated automatically by an integrated background scheduler.
 - 👍 **User Voting** — Community thumbs up/down voting on computed article verdicts.
+- 🛡️ **Rate Limiting & Quotas** — IP-based rate limits and daily API quotas powered by SlowAPI and Redis.
+- ⚡ **Global Caching** — Upstash Redis caching for expensive LLM extractions and web searches.
+- 🔄 **CI/CD Pipeline** — Automated testing via GitHub Actions on every push and pull request.
 
 ---
 
@@ -45,8 +48,9 @@ VeritasAI is an advanced AI platform that verifies claims in news articles by ex
 | **Backend** | FastAPI (Python) + Uvicorn + SlowAPI (Rate Limiter) + APScheduler (Cron Jobs) |
 | **AI/ML** | Gemini 2.5 Flash & 3.1 Pro Preview, HuggingFace, ClaimBuster DeBERTa |
 | **Evidence** | Tavily Search API + Google Fact Check API + NewsAPI |
-| **Database** | Supabase (PostgreSQL + Realtime) |
+| **Database & Cache** | Supabase (PostgreSQL + Realtime) + Upstash Redis |
 | **Styling** | Vanilla CSS (dark newsroom theme) |
+| **CI/CD** | GitHub Actions |
 
 ---
 
@@ -132,19 +136,32 @@ GOOGLE_FACTCHECK_API_KEY=your_google_factcheck_key
 # v3: LLM (claim extraction + reasoning)
 GOOGLE_AI_API_KEY=your_gemini_api_key
 LLM_MODEL_EXTRACT=gemini-2.5-flash
-LLM_MODEL_REASON=gemini-3.1-pro-preview
+LLM_MODEL_REASON=gemini-2.5-pro
 
-# v3: Evidence retrieval
+# ── v3: Evidence retrieval ──
 SEARCH_API_PROVIDER=tavily
 SEARCH_API_KEY=your_tavily_key
 
-# v3: Pipeline config
+# ── v3: Pipeline config ──
 MAX_CLAIMS=5
 MAX_EVIDENCE_PER_CLAIM=6
 CLAIMBUSTER_GATE_THRESHOLD=40
 SOURCE_CREDIBILITY_CONFIG_PATH=backend/config/source_credibility.json
 
-# Live Feed Cron (Trending)
+# ── v4: Redis Cache (Upstash) ──
+UPSTASH_REDIS_URL=your_upstash_redis_url
+UPSTASH_REDIS_TOKEN=your_upstash_redis_token
+CACHE_TAVILY_TTL=21600
+CACHE_FACTCHECK_TTL=43200
+CACHE_HF_TTL=86400
+CACHE_EXTRACTION_TTL=86400
+
+# ── v4: Rate Limiting & Admin ──
+UPSTASH_REDIS_PROTOCOL_URL=rediss://default:your_password@your_endpoint:6379
+ADMIN_API_KEY=your_admin_api_key
+DAILY_LIMIT_ANALYZE=200
+
+# ── Live Feed Cron (Trending) ──
 NEWS_API_KEY=your_newsapi_key
 NEWS_API_PROVIDER=newsapi
 NEWS_API_LANGUAGE=en
