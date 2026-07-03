@@ -68,5 +68,5 @@ limiter = Limiter(
     storage_uri=_storage,
     default_limits=[],  # no global default — set per-endpoint explicitly
     swallow_errors=True,  # fail-open on Redis timeouts/DNS issues
-    enabled=False, # TEMPORARILY DISABLED PER USER REQUEST
+    enabled=os.getenv("DISABLE_RATE_LIMITING", "false").lower() != "true",
 )
