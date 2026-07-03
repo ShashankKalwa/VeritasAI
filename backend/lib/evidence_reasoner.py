@@ -128,13 +128,23 @@ async def reason(
 
         prompt = SYSTEM_PROMPT + "\n\n" + user
 
-        response = await client.aio.models.generate_content(
-            model=os.getenv("LLM_MODEL_REASON", "gemini-2.5-pro"),
-            contents=[
-                {"role": "user", "parts": [{"text": prompt}]}
-            ],
-            config={"temperature": 0.1},
-        )
+        try:
+            response = await client.aio.models.generate_content(
+                model=os.getenv("LLM_MODEL_REASON", "gemini-2.5-pro"),
+                contents=[
+                    {"role": "user", "parts": [{"text": prompt}]}
+                ],
+                config={"temperature": 0.1},
+            )
+        except Exception as e:
+            logger.warning(f"Primary reasoning model failed: {e}. Falling back to gemini-2.5-flash.")
+            response = await client.aio.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[
+                    {"role": "user", "parts": [{"text": prompt}]}
+                ],
+                config={"temperature": 0.1},
+            )
 
         raw = response.text.strip()
         raw = re.sub(r"```json\s*", "", raw)
@@ -198,12 +208,17 @@ def _heuristic_reasoning(
                            "not true", "denied", "refuted", "hoax", "fake",
                            "pants on fire", "satire", "rumor", "conspiracy", "untrue"])
 
+        # Check for affirmation/supporting keywords
+        has_affirmation = any(w in snippet_lower for w in
+                              ["true", "confirmed", "verified", "accurate",
+                               "correct", "real", "fact", "proven", "yes"])
+
         enriched = {**item, "stance": "unclear"}
 
         if has_negation and overlap > 2:
             enriched["stance"] = "contradicting"
             contradicting.append(enriched)
-        elif overlap > 3:
+        elif has_affirmation and overlap > 3:
             enriched["stance"] = "supporting"
             supporting.append(enriched)
         else:

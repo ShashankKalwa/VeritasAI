@@ -67,4 +67,5 @@ limiter = Limiter(
     key_func=_get_client_ip,
     storage_uri=_storage,
     default_limits=[],  # no global default — set per-endpoint explicitly
+    swallow_errors=True,  # fail-open on Redis timeouts/DNS issues
 )
