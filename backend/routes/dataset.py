@@ -84,7 +84,7 @@ async def get_dataset_stats(request: Request):
     """Return dataset summary statistics."""
     try:
         sb = get_supabase()
-        resp = sb.table("dataset").select("label, category").execute()
+        resp = sb.table("dataset").select("label, category").limit(1000).execute()
         data = resp.data or []
 
         total = len(data)

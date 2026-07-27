@@ -99,6 +99,8 @@
 
 .trending-claim-card {
   background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1.25rem;
@@ -111,8 +113,8 @@
 
 .trending-claim-card:hover {
   border-color: var(--border-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.02);
 }
 
 .tcc-header {
@@ -315,6 +317,8 @@
 
 .live-feed-card {
   background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1.25rem;
@@ -329,6 +333,8 @@
 
 .live-feed-card:hover {
   border-color: var(--border-hover);
+  transform: translateX(4px);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
 }
 
 .lfc-header {
@@ -413,32 +419,6 @@
   gap: 0.5rem;
 }
 
-.vote-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.vote-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
-
-.vote-btn.true:hover {
-  color: var(--accent-green);
-  border-color: rgba(22, 163, 74, 0.5);
-}
-
-.vote-btn.false:hover {
-  color: var(--accent-red);
-  border-color: rgba(220, 38, 38, 0.5);
-}
 
 .empty-state {
   text-align: center;

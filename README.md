@@ -33,7 +33,6 @@ VeritasAI is an advanced AI platform that verifies claims in news articles by ex
 - 📈 **Analytics Dashboard** — Real-time charts with 7-label verdict taxonomy.
 - 🔴 **Live Feed** — WebSocket-powered community detection feed (recently analyzed articles).
 - 🔥 **Trending Claims** — Aggregated database of trending claims sorted by check counts, updated automatically by an integrated background scheduler.
-- 👍 **User Voting** — Community thumbs up/down voting on computed article verdicts.
 - 🛡️ **Rate Limiting & Quotas** — IP-based rate limits and daily API quotas powered by SlowAPI and Redis.
 - ⚡ **Global Caching** — Upstash Redis caching for expensive LLM extractions and web searches.
 - 🔄 **CI/CD Pipeline** — Automated testing via GitHub Actions on every push and pull request.
@@ -183,7 +182,6 @@ FEED_SKIP_IF_ANALYZED_WITHIN_HOURS=12
 | `GET` | `/api/dataset` | Paginated dataset with filters |
 | `GET` | `/api/dataset/stats` | Dataset statistics |
 | `GET` | `/api/trending` | Trending claims sorted by check count |
-| `POST` | `/api/vote` | Thumbs-up/down voting on article verdicts |
 | `POST` | `/api/trending/refresh` | Manually trigger trending claims scheduler job |
 | `GET` | `/health` | API health check |
 | `GET` | `/docs` | Swagger API documentation |
@@ -229,7 +227,7 @@ VeritasAI/
 │   │   ├── dataset.py              # Paginated database query routes
 │   │   ├── feed.py                 # Live feed retrieval routes
 │   │   ├── stats.py                # Statistics aggregation routes
-│   │   └── trending.py             # Trending & user voting routes
+│   │   └── trending.py             # Trending claims routes
 │   ├── lib/              # Verification & ML pipeline modules
 │   │   ├── claim_extractor.py      # LLM claim extraction engine
 │   │   ├── ensemble_verdict_v2.py  # Credibility-weighted verdict calculator

@@ -9,6 +9,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+import socket
+import ipaddress
+from urllib.parse import urlparse
+
+def is_safe_url(url: str) -> bool:
+    """Check if a URL resolves to a public, non-internal IP address to prevent SSRF."""
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        
+        # Resolve hostname to IP
+        ip = socket.gethostbyname(hostname)
+        ip_obj = ipaddress.ip_address(ip)
+        
+        # Check if IP is private, loopback, or otherwise reserved for internal use
+        if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_multicast or ip_obj.is_link_local or ip_obj.is_reserved:
+            return False
+            
+        return True
+    except Exception as e:
+        logger.warning(f"SSRF check failed for {url}: {e}")
+        return False
+
+
 def extract_text_from_url(url: str) -> str:
     """
     Fetch and extract main article text from a URL using trafilatura.
@@ -20,6 +46,10 @@ def extract_text_from_url(url: str) -> str:
     Returns:
         Plain text content of the article, or empty string on failure.
     """
+    if not is_safe_url(url):
+        logger.warning(f"SSRF blocked for URL: {url}")
+        return ""
+
     try:
         import trafilatura
         downloaded = trafilatura.fetch_url(url)

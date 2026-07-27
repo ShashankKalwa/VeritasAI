@@ -7,43 +7,47 @@
 
 /* === CSS Custom Properties === */
 :root {
-  --bg-primary: #0a0a0a;
-  --bg-surface: #111111;
-  --bg-card: #1a1a1a;
-  --bg-card-hover: #222222;
-  --bg-elevated: #242424;
+  --bg-primary: #030712;
+  --bg-surface: #0f172a;
+  --bg-card: rgba(255, 255, 255, 0.02);
+  --bg-card-hover: rgba(255, 255, 255, 0.04);
+  --bg-elevated: rgba(255, 255, 255, 0.05);
   
-  --accent-red: #dc2626;
-  --accent-red-hover: #b91c1c;
-  --accent-red-glow: rgba(220, 38, 38, 0.15);
-  --accent-green: #16a34a;
-  --accent-green-hover: #15803d;
-  --accent-green-glow: rgba(22, 163, 74, 0.15);
+  --accent-cyan: #06b6d4;
+  --accent-emerald: #10b981;
+  --accent-fuchsia: #d946ef;
+  
+  --accent-red: #f43f5e;
+  --accent-red-hover: #e11d48;
+  --accent-red-glow: rgba(244, 63, 94, 0.2);
+  --accent-green: #10b981;
+  --accent-green-hover: #059669;
+  --accent-green-glow: rgba(16, 185, 129, 0.2);
   --accent-blue: #3b82f6;
-  --accent-purple: #a855f7;
+  --accent-purple: #8b5cf6;
   
-  --text-primary: #f5f5f5;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --text-dim: #4b5563;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-dim: #475569;
   
-  --border: #2d2d2d;
-  --border-hover: #404040;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.15);
   
-  --font-display: 'Outfit', -apple-system, sans-serif;
-  --font-mono: 'DM Mono', 'Courier New', monospace;
-  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-display: 'Space Grotesk', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
   
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
   
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
-  --shadow-glow-red: 0 0 20px rgba(220, 38, 38, 0.2);
-  --shadow-glow-green: 0 0 20px rgba(22, 163, 74, 0.2);
+  --shadow-glow-red: 0 0 25px rgba(244, 63, 94, 0.25);
+  --shadow-glow-green: 0 0 25px rgba(16, 185, 129, 0.25);
   
   --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -76,8 +80,9 @@ body::before {
   position: fixed;
   inset: 0;
   background-image: 
-    radial-gradient(circle at 25% 25%, rgba(220, 38, 38, 0.03) 0%, transparent 50%),
-    radial-gradient(circle at 75% 75%, rgba(168, 85, 247, 0.02) 0%, transparent 50%);
+    radial-gradient(circle at 15% 50%, rgba(6, 182, 212, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(217, 70, 239, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.03) 0%, transparent 40%);
   pointer-events: none;
   z-index: 0;
 }
@@ -117,9 +122,9 @@ h1, h2, h3 {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(10, 10, 10, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(3, 7, 18, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border-bottom: 1px solid var(--border);
   padding: 0 1.5rem;
 }
@@ -357,9 +362,9 @@ h1, h2, h3 {
 
 .hero-title {
   font-family: var(--font-display);
-  font-size: 2.8rem;
-  font-weight: 900;
-  background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+  font-size: 3.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -376,6 +381,8 @@ h1, h2, h3 {
 
 .input-wrapper {
   background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -633,6 +640,8 @@ h1, h2, h3 {
 /* === Result Card === */
 .result-card {
   background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
@@ -691,7 +700,8 @@ h1, h2, h3 {
 .badge-credible {
   background: var(--accent-green-glow);
   color: #86efac;
-  border: 1px solid rgba(22, 163, 74, 0.3);
+  border: 1px solid rgba(22, 163, 74, 0.4);
+  box-shadow: 0 0 15px rgba(22, 163, 74, 0.2), inset 0 0 10px rgba(22, 163, 74, 0.1);
 }
 
 .badge-mostly-true {
@@ -715,7 +725,8 @@ h1, h2, h3 {
 .badge-false {
   background: var(--accent-red-glow);
   color: #fca5a5;
-  border: 1px solid rgba(220, 38, 38, 0.3);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.2), inset 0 0 10px rgba(220, 38, 38, 0.1);
 }
 
 .content-type-tag {

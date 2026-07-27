@@ -96,18 +96,6 @@ export async function getTrendingClaims(limit = 20, offset = 0, verdict = '') {
   return result.data;
 }
 
-/**
- * Submit a vote on an article
- */
-export async function submitVote(newsId, vote) {
-  const response = await fetch(`${API_URL}/api/vote`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ news_id: newsId, vote }),
-  });
-  if (!response.ok) throw new Error('Failed to submit vote');
-  return await response.json();
-}
 
 /**
  * Get dataset with filtering from backend

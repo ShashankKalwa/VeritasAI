@@ -45,57 +45,7 @@ async def trending_claims(
 
 
 
-class VoteRequest(BaseModel):
-    news_id: str
-    vote: str  # 'true' or 'false'
 
-
-@router.post("/api/vote")
-@limiter.limit("20/minute")
-async def submit_vote(request: Request, req: VoteRequest):
-    """Simple thumbs-up / thumbs-down on a verdict."""
-    if req.vote not in ("true", "false"):
-        raise HTTPException(400, "Vote must be 'true' or 'false'")
-
-    try:
-        sb = get_supabase()
-
-        # Get current counts
-        current = (
-            sb.table("analyzed_news")
-            .select("vote_true, vote_false")
-            .eq("id", req.news_id)
-            .limit(1)
-            .execute()
-        )
-
-        if not current.data:
-            raise HTTPException(404, "Article not found")
-
-        row = current.data[0]
-
-        if req.vote == "true":
-            new_true = row["vote_true"] + 1
-            new_false = row["vote_false"]
-        else:
-            new_true = row["vote_true"]
-            new_false = row["vote_false"] + 1
-
-        sb.table("analyzed_news").update({
-            "vote_true": new_true,
-            "vote_false": new_false,
-        }).eq("id", req.news_id).execute()
-
-        return {
-            "news_id": req.news_id,
-            "vote_true": new_true,
-            "vote_false": new_false,
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Vote error: {e}")
-        raise HTTPException(500, f"Vote failed: {str(e)[:100]}")
 
 
 @router.post("/api/trending/refresh")

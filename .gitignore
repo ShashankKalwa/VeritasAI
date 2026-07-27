@@ -33,3 +33,8 @@ backend/routes/__pycache__/
 __pycache__/
 *.pyc
 
+# Environment files
+.env.*
+
+# Audit Reports
+audit-reports/
