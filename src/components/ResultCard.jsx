@@ -66,6 +66,27 @@ export default function ResultCard({ result }) {
         )}
       </div>
 
+      {/* ── API Quota Exceeded Warning ── */}
+      {explainability.api_rate_limited && (
+        <div className="api-limit-warning" style={{
+          backgroundColor: '#ef444420',
+          border: '1px solid #ef4444',
+          color: '#ef4444',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          margin: '0 0 16px 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          fontWeight: '500'
+        }}>
+          <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+          <span>
+            <strong>Search API Quota Exceeded:</strong> Live evidence retrieval is temporarily paused. Results shown may be incomplete or based solely on cached data and internal heuristics.
+          </span>
+        </div>
+      )}
+
       {/* ── Primary Signal ── */}
       {explainability.primary_signal && (
         <div className="primary-signal">

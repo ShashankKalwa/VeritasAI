@@ -44,6 +44,11 @@ async def retrieve_evidence(claim_text: str) -> list[dict]:
     return results
 
 
+class SearchAPIQuotaError(Exception):
+    """Raised when the search API quota is exceeded or rate limited."""
+    pass
+
+
 async def _tavily_search(claim_text: str, api_key: str) -> list[dict]:
     """Execute Tavily search and return evidence items."""
     try:
@@ -76,6 +81,10 @@ async def _tavily_search(claim_text: str, api_key: str) -> list[dict]:
         logger.error("tavily-python not installed — run: pip install tavily-python")
         return []
     except Exception as e:
+        err_str = str(e).lower()
+        if "429" in err_str or "rate limit" in err_str or "quota" in err_str or "402" in err_str:
+            logger.error("Tavily API quota exceeded or rate limited!")
+            raise SearchAPIQuotaError("Tavily Search API quota exceeded")
         logger.error(f"Tavily search error: {e}")
         return []
 

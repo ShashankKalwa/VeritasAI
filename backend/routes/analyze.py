@@ -52,7 +52,7 @@ async def run_v2_pipeline(text: str, input_type: str = "text", content_type: str
     from lib.claim_extractor import extract_claims
     from lib.ml_model import claimbuster_score_async, bert_signal_async
     from lib.heuristics import manipulation_signal_async
-    from lib.evidence_retriever import retrieve_evidence, retrieve_factcheck, aggregate_evidence
+    from lib.evidence_retriever import retrieve_evidence, retrieve_factcheck, aggregate_evidence, SearchAPIQuotaError
     from lib.source_credibility import score_evidence
     from lib.evidence_reasoner import reason
     from lib.ensemble_verdict_v2 import compute_claim_verdict, compute_overall_verdict
@@ -126,9 +126,24 @@ async def run_v2_pipeline(text: str, input_type: str = "text", content_type: str
                 # Steps 5-7: Evidence retrieval (search + fact check + aggregate)
                 search_task = retrieve_evidence(claim_text)
                 fc_task = retrieve_factcheck(claim_text)
-                search_results, fc_results = await asyncio.gather(
-                    search_task, fc_task
-                )
+                try:
+                    search_results, fc_results = await asyncio.gather(
+                        search_task, fc_task
+                    )
+                except SearchAPIQuotaError:
+                    logger.warning(f"API Rate limit hit for claim: {claim_text[:60]}...")
+                    claim["verdict"] = "API Limit Exceeded"
+                    claim["confidence"] = None
+                    claim["final_score"] = 0.0
+                    claim["check_worthy"] = True
+                    claim["api_rate_limited"] = True
+                    claim["reasoning"] = {
+                        "supporting_evidence": [], "contradicting_evidence": [],
+                        "unclear_evidence": [],
+                        "reasoning": "Search API quota exceeded. Could not retrieve evidence.",
+                        "google_factcheck_match": False, "google_factcheck_details": None,
+                    }
+                    return claim
 
                 # Step 7: Aggregate
                 evidence = aggregate_evidence(search_results, fc_results)

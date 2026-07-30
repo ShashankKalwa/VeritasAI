@@ -53,6 +53,7 @@ def format_response(
                 "unclear": reasoning.get("unclear_evidence", []),
             },
             "reasoning": reasoning.get("reasoning"),
+            "api_rate_limited": c.get("api_rate_limited", False),
             "model_signals": {
                 "bert_linguistic_signal": c.get("bert_signal", 50),
                 "heuristic_manipulation_signal": c.get("manipulation_signal", 50),
@@ -61,6 +62,8 @@ def format_response(
                 "google_factcheck_details": reasoning.get("google_factcheck_details"),
             },
         })
+
+    has_rate_limit = any(c.get("api_rate_limited", False) for c in claims)
 
     return {
         "overall_verdict": overall_verdict,
@@ -71,6 +74,7 @@ def format_response(
             "primary_signal": primary,
             "secondary_signals": secondaries,
             "top_sources": top_sources,
+            "api_rate_limited": has_rate_limit,
         },
     }
 
