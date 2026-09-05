@@ -121,6 +121,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def add_view_rate_limit_state(request: Request, call_next):
+    """
+    Workaround for slowapi bug with swallow_errors=True.
+    When Redis is down, slowapi swallows the error but fails to set view_rate_limit,
+    crashing the app on the next line. This pre-populates it.
+    """
+    request.state.view_rate_limit = None
+    response = await call_next(request)
+    return response
+
 app.include_router(analyze_router, tags=["analyze"])
 app.include_router(stats_router, tags=["stats"])
 app.include_router(feed_router, tags=["feed"])
