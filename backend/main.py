@@ -75,10 +75,13 @@ async def lifespan(app: FastAPI):
 
     # Start trending cron scheduler (Phase 8)
     try:
-        from jobs.trending_cron import start_scheduler
+        from jobs.trending_cron import start_scheduler, scheduler
+        from jobs.keep_alive import schedule_keep_alive
+        
+        schedule_keep_alive(scheduler)
         start_scheduler()
     except Exception as e:
-        logger.warning(f"Trending scheduler start failed: {e}")
+        logger.warning(f"Scheduler start failed: {e}")
 
     yield
 
