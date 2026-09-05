@@ -172,7 +172,6 @@ def start_scheduler():
         hours=CRON_INTERVAL,
         id='trending_analysis',
         replace_existing=True,
-        next_run_time=datetime.now(timezone.utc),  # Run immediately on startup
     )
     scheduler.start()
     logger.info(f"📅 Trending cron scheduled: every {CRON_INTERVAL} hours")
