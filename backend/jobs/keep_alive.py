@@ -37,6 +37,18 @@ async def ping_supabase():
     except Exception as e:
         logger.error(f"Supabase keep-alive ping failed: {e}")
 
+async def ping_redis():
+    """Ping Upstash Redis to prevent the free-tier database from being paused."""
+    try:
+        from lib.cache import get_cache_stats
+        result = await get_cache_stats()
+        if result.get("redis_connected"):
+            logger.info("Keep-alive ping to Upstash Redis - Status: Success")
+        else:
+            logger.warning(f"Keep-alive ping to Upstash Redis - Status: Failed {result.get('error')}")
+    except Exception as e:
+        logger.error(f"Redis keep-alive ping failed: {e}")
+
 def schedule_keep_alive(scheduler):
     """Add keep-alive jobs to the given APScheduler."""
     scheduler.add_job(
@@ -58,3 +70,13 @@ def schedule_keep_alive(scheduler):
         next_run_time=datetime.now(timezone.utc),
     )
     logger.info("📅 Supabase Keep-alive cron scheduled: every 12 hours")
+    
+    scheduler.add_job(
+        ping_redis,
+        trigger='interval',
+        hours=12,  # Running every 12 hours is enough to keep Upstash Redis awake
+        id='redis_keep_alive_ping',
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc),
+    )
+    logger.info("📅 Upstash Redis Keep-alive cron scheduled: every 12 hours")
