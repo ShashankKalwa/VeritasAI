@@ -26,8 +26,19 @@ async def ping_server():
     except Exception as e:
         logger.error(f"Keep-alive ping failed: {e}")
 
+async def ping_supabase():
+    """Ping Supabase to prevent the free-tier database from being paused."""
+    try:
+        from lib.supabase_client import get_supabase
+        sb = get_supabase()
+        # A lightweight query to keep the database active
+        sb.table("analyzed_news").select("id").limit(1).execute()
+        logger.info("Keep-alive ping to Supabase - Status: Success")
+    except Exception as e:
+        logger.error(f"Supabase keep-alive ping failed: {e}")
+
 def schedule_keep_alive(scheduler):
-    """Add keep-alive job to the given APScheduler."""
+    """Add keep-alive jobs to the given APScheduler."""
     scheduler.add_job(
         ping_server,
         trigger='interval',
@@ -36,4 +47,14 @@ def schedule_keep_alive(scheduler):
         replace_existing=True,
         next_run_time=datetime.now(timezone.utc),
     )
-    logger.info("📅 Keep-alive cron scheduled: every 14 minutes")
+    logger.info("📅 Render Keep-alive cron scheduled: every 14 minutes")
+    
+    scheduler.add_job(
+        ping_supabase,
+        trigger='interval',
+        hours=12,  # Running every 12 hours is enough to keep Supabase awake
+        id='supabase_keep_alive_ping',
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc),
+    )
+    logger.info("📅 Supabase Keep-alive cron scheduled: every 12 hours")
