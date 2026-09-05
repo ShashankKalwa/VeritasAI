@@ -150,7 +150,9 @@ async def run_trending_analysis():
         except Exception as e:
             errors += 1
             logger.error(f"❌ Error analyzing '{headline[:50]}': {e}")
-            continue
+            
+        import asyncio
+        await asyncio.sleep(15) # Sleep for 15s to respect Gemini 5 RPM limits
 
     logger.info(
         f"🕐 Trending cron complete: "
