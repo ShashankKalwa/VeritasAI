@@ -47,9 +47,9 @@ class HuggingFaceDetector:
             return cached
 
         import asyncio
-        for attempt in range(3):
+        for attempt in range(2):
             try:
-                async with httpx.AsyncClient(timeout=15.0) as c:
+                async with httpx.AsyncClient(timeout=3.0) as c:
                     resp = await c.post(
                         f"{HF_BASE_URL}/{HF_FAKE_NEWS_MODEL}",
                         headers={"Authorization": f"Bearer {self.token}"},
@@ -114,9 +114,9 @@ class ClaimBusterHF:
             return cached
 
         import asyncio
-        for attempt in range(3):
+        for attempt in range(2):
             try:
-                async with httpx.AsyncClient(timeout=15.0) as c:
+                async with httpx.AsyncClient(timeout=3.0) as c:
                     resp = await c.post(
                         f"{HF_BASE_URL}/{self.model}",
                         headers={"Authorization": f"Bearer {self.token}"},
