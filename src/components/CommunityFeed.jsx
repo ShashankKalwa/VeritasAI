@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
+import ResultCard from './ResultCard';
 
 function timeAgo(dateStr) {
   const now = new Date();
@@ -142,7 +142,7 @@ export default function CommunityFeed() {
       ) : (
         <div className="feed-list">
           {analyses.map((item) => (
-            <div key={item.id} className="feed-item" onClick={() => setSelectedItem(item)}>
+            <div key={item.id} className="feed-item" onClick={() => setSelectedItem(item)} style={{ cursor: 'pointer' }}>
               <div className="feed-item-top">
                 <span className="mini-badge" style={{
                   background: getColor(item) + '20',
@@ -168,59 +168,16 @@ export default function CommunityFeed() {
         </div>
       )}
 
-      {/* Feed Detail Modal */}
-      {selectedItem && createPortal(
-        <div className="feed-modal-overlay" onClick={() => setSelectedItem(null)}>
-          <div className="feed-modal-content" onClick={e => e.stopPropagation()}>
-            <button className="feed-modal-close" onClick={() => setSelectedItem(null)}>×</button>
-            
-            <div className="feed-modal-header">
-              <span className="mini-badge" style={{
-                background: getColor(selectedItem) + '20',
-                color: getColor(selectedItem),
-                borderColor: getColor(selectedItem) + '40',
-              }}>
-                {getVerdict(selectedItem)}
-              </span>
-              <span className="feed-confidence">
-                {selectedItem.overall_confidence || selectedItem.confidence || 0}% Confidence
-              </span>
+      {selectedItem && (
+        <div className="community-modal-overlay" onClick={() => setSelectedItem(null)}>
+          <div className="community-modal-content" onClick={e => e.stopPropagation()}>
+            <button className="community-modal-close" onClick={() => setSelectedItem(null)}>✕</button>
+            <div className="community-modal-header">
+              <h2>{selectedItem.headline || selectedItem.input_text || 'News Analysis'}</h2>
             </div>
-            
-            <h3 className="feed-modal-title">
-              {selectedItem.headline || selectedItem.input_text}
-            </h3>
-            
-            {(selectedItem.summary || (selectedItem.explainability && selectedItem.explainability.primary_signal) || selectedItem.analysis) && (
-              <div className="feed-modal-section">
-                <h4>Analysis Summary</h4>
-                <p>{selectedItem.summary || (selectedItem.explainability && selectedItem.explainability.primary_signal) || selectedItem.analysis}</p>
-              </div>
-            )}
-
-            {selectedItem.top_sources && selectedItem.top_sources.length > 0 && (
-              <div className="feed-modal-section">
-                <h4>Sources</h4>
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--text-secondary)' }}>
-                  {selectedItem.top_sources.map((src, i) => (
-                    <li key={i} style={{ marginBottom: '4px' }}>
-                      {typeof src === 'string' ? src : `${src.source_name} - ${src.stance}`}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            
-            {selectedItem.source_url && (
-              <div className="feed-modal-section" style={{ background: 'transparent', border: 'none', padding: '0', marginBottom: '0' }}>
-                <a href={selectedItem.source_url} target="_blank" rel="noreferrer" className="feed-modal-link">
-                  View Original Source ↗
-                </a>
-              </div>
-            )}
+            <ResultCard result={selectedItem} />
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );
