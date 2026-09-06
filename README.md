@@ -38,10 +38,10 @@ graph TD
 | 6 | **Google Fact Check** | Fact Check Tools API | Cross-reference verified fact-checks |
 | 7 | **Aggregation** | Custom | Deduplicate, merge, sort evidence |
 | 8 | **Source Credibility** | 50+ domain database | Score evidence sources (0-100) |
-| 9a | **BERT Signal** | `jy46604790/Fake-News-Bert-Detect` | Linguistic credibility signal (15% weight) |
-| 9b | **Heuristic Signal** | 60+ regex rules | Manipulation detection (20% weight) |
+| 9a | **BERT Signal** | `jy46604790/Fake-News-Bert-Detect` | Linguistic credibility signal (10% weight) |
+| 9b | **Heuristic Signal** | 60+ regex rules | Manipulation detection (10% weight) |
 | 10 | **Evidence Reasoning** | Gemini 3.1 Pro Preview | Classify evidence as supporting/contradicting/unclear |
-| 11 | **Ensemble Verdict** | Credibility-weighted | Per-claim + article verdict (50% evidence weight) |
+| 11 | **Ensemble Verdict** | Credibility-weighted | Per-claim + article verdict (65% evidence weight) |
 | 12 | **Explainability** | Custom | Primary/secondary signals, top sources |
 
 </details>
