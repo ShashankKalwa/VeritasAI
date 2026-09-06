@@ -51,7 +51,7 @@ export default function AboutPage() {
             <div className="tech-icon">🚀</div>
             <h3>Deployment</h3>
             <ul>
-              <li>Netlify (Frontend CDN)</li>
+              <li>Vercel (Frontend CDN)</li>
               <li>Supabase Cloud (Database)</li>
               <li>Edge Caching</li>
               <li>CI/CD Pipeline</li>

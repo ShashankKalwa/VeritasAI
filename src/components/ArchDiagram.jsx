@@ -59,7 +59,7 @@ export default function ArchDiagram() {
         <rect x="30" y="185" width="840" height="90" rx="12" fill="url(#grad-cdn)" stroke="#22c55e" strokeWidth="1.5"/>
         <text x="50" y="210" fill="#86efac" fontSize="13" fontWeight="600" fontFamily="IBM Plex Mono">CDN / DEPLOY LAYER</text>
         <rect x="120" y="220" width="200" height="40" rx="8" fill="#052e16" stroke="#22c55e" strokeWidth="1"/>
-        <text x="220" y="245" textAnchor="middle" fill="#e2e8f0" fontSize="12" fontFamily="Inter">Netlify CDN</text>
+        <text x="220" y="245" textAnchor="middle" fill="#e2e8f0" fontSize="12" fontFamily="Inter">Vercel CDN</text>
         <rect x="350" y="220" width="200" height="40" rx="8" fill="#052e16" stroke="#22c55e" strokeWidth="1"/>
         <text x="450" y="245" textAnchor="middle" fill="#e2e8f0" fontSize="12" fontFamily="Inter">Static Assets (Vite)</text>
         <rect x="580" y="220" width="200" height="40" rx="8" fill="#052e16" stroke="#22c55e" strokeWidth="1"/>

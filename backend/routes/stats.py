@@ -31,7 +31,43 @@ async def get_stats(request: Request):
         resp = sb.rpc("get_dashboard_stats").execute()
         
         if resp.data:
-            return resp.data
+            stats_data = resp.data
+            
+            # Fallback computation for graphs if RPC returns empty arrays/objects
+            if not stats_data.get("byCategory") or not stats_data.get("confidenceBuckets"):
+                raw_data = sb.table("analyses").select("category, overall_verdict, verdict, overall_confidence, confidence").order("created_at", desc=True).limit(1000).execute().data
+                
+                if not stats_data.get("byCategory"):
+                    cat_map = {}
+                    for row in raw_data:
+                        cat = row.get("category", "General") or "General"
+                        v = _get_verdict(row)
+                        if cat not in cat_map:
+                            cat_map[cat] = {"category": cat, "credible": 0, "false": 0, "mixed": 0}
+                        
+                        if v in CREDIBLE_VERDICTS:
+                            cat_map[cat]["credible"] += 1
+                        elif v in FALSE_VERDICTS:
+                            cat_map[cat]["false"] += 1
+                        elif v in MIXED_VERDICTS:
+                            cat_map[cat]["mixed"] += 1
+                    stats_data["byCategory"] = list(cat_map.values())
+                
+                if not stats_data.get("confidenceBuckets"):
+                    buckets = {"0-20%": 0, "21-40%": 0, "41-60%": 0, "61-80%": 0, "81-100%": 0}
+                    for row in raw_data:
+                        conf = row.get("overall_confidence")
+                        if conf is None:
+                            conf = row.get("confidence", 0)
+                        
+                        if conf <= 20: buckets["0-20%"] += 1
+                        elif conf <= 40: buckets["21-40%"] += 1
+                        elif conf <= 60: buckets["41-60%"] += 1
+                        elif conf <= 80: buckets["61-80%"] += 1
+                        else: buckets["81-100%"] += 1
+                    stats_data["confidenceBuckets"] = buckets
+            
+            return stats_data
             
         return {
             "total": 0,

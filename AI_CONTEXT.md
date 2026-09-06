@@ -24,7 +24,7 @@ This document provides a highly detailed, comprehensive overview of the **Verita
 - **Routing:** React Router v7 (`App.jsx`)
 - **Data/Realtime:** `supabase-js` for WebSocket subscriptions on the `analyzed_news` table.
 - **Charts:** `chart.js` and `react-chartjs-2` for dashboard statistics.
-- **Deployment:** Configured for Vercel/Netlify.
+- **Deployment:** Configured for Vercel.
 
 ### Backend (`/backend`)
 - **Framework:** FastAPI (Python 3.12+) running on Uvicorn.

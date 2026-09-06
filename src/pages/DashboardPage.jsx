@@ -9,6 +9,7 @@ import {
 } from 'chart.js';
 import MetricCard from '../components/MetricCard';
 import { getStats } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
 ChartJS.register(
   CategoryScale, LinearScale, BarElement,
@@ -44,8 +45,29 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 30000);
-    return () => clearInterval(interval);
+    
+    // Subscribe to new analyses for real-time updates
+    const channel = supabase
+      .channel('dashboard_updates')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'analyzed_news' },
+        () => {
+          fetchStats();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'analyses' },
+        () => {
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   if (loading) {
