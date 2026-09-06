@@ -997,6 +997,11 @@ h1, h2, h3 {
   border-bottom: 1px solid rgba(45, 45, 45, 0.5);
   transition: var(--transition);
   animation: fadeInUp 0.4s ease;
+  cursor: pointer;
+}
+
+.feed-item:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .feed-item:hover {
