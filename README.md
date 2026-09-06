@@ -8,9 +8,6 @@
 
 **[🔴 Live Demo](https://veritas-ai-delta.vercel.app/)** 
 
-![VeritasAI Detect Page Demo](https://via.placeholder.com/800x450.png?text=VeritasAI+Detect+Page+Demo) 
-*(Add a short GIF or screenshot of the DetectPage here to instantly show what the app does)*
-
 ## 🔬 Verification Pipeline (v3)
 
 ```mermaid

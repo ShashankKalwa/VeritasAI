@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 # Verdict taxonomy — labels + score thresholds + colors
 VERDICT_TAXONOMY = [
-    {"label": "Credible",                     "min": 0.65, "max": 1.00,  "color": "#22c55e"},
-    {"label": "Likely True",                  "min": 0.25, "max": 0.65,  "color": "#86efac"},
-    {"label": "Mixed / Misleading",           "min": -0.25, "max": 0.25, "color": "#eab308"},
-    {"label": "Likely False",                 "min": -0.65, "max": -0.25, "color": "#f97316"},
-    {"label": "False",                        "min": -1.00, "max": -0.65, "color": "#ef4444"},
+    {"label": "Credible",                     "min": 0.60, "max": 1.00,  "color": "#22c55e"},
+    {"label": "Likely True",                  "min": 0.20, "max": 0.60,  "color": "#86efac"},
+    {"label": "Mixed / Misleading",           "min": -0.20, "max": 0.20, "color": "#eab308"},
+    {"label": "Likely False",                 "min": -0.60, "max": -0.20, "color": "#f97316"},
+    {"label": "False",                        "min": -1.00, "max": -0.60, "color": "#ef4444"},
 ]
 
 VERDICT_COLORS = {
@@ -32,10 +32,10 @@ VERDICT_COLORS = {
 
 # Ensemble weights — ClaimBuster is explicitly 0
 WEIGHTS = {
-    "evidence": 0.50,           # Primary — evidence wins
-    "google_factcheck": 0.15,   # High signal if match found
-    "bert_linguistic": 0.15,    # BERT writing style
-    "heuristic_manipulation": 0.20,  # Heuristic NLP
+    "evidence": 0.65,           # Boosted: Evidence should dominate the verdict
+    "google_factcheck": 0.15,   # High signal if verified fact-check match found
+    "bert_linguistic": 0.10,    # Reduced: BERT writing style shouldn't overpower facts
+    "heuristic_manipulation": 0.10,  # Reduced: Heuristics shouldn't overpower facts
     "claimbuster": 0.00,        # Informational only — NEVER part of score
 }
 
@@ -207,13 +207,13 @@ def compute_overall_verdict(claims: list[dict]) -> dict:
 
 def _score_to_verdict(score: float) -> str:
     """Map a -1.0 to +1.0 score to a verdict label."""
-    if score >= 0.65:
+    if score >= 0.60:
         return "Credible"
-    elif score >= 0.25:
+    elif score >= 0.20:
         return "Likely True"
-    elif score >= -0.25:
+    elif score >= -0.20:
         return "Mixed / Misleading"
-    elif score >= -0.65:
+    elif score >= -0.60:
         return "Likely False"
     else:
         return "False"
