@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 
 function timeAgo(dateStr) {
@@ -168,7 +169,7 @@ export default function CommunityFeed() {
       )}
 
       {/* Feed Detail Modal */}
-      {selectedItem && (
+      {selectedItem && createPortal(
         <div className="feed-modal-overlay" onClick={() => setSelectedItem(null)}>
           <div className="feed-modal-content" onClick={e => e.stopPropagation()}>
             <button className="feed-modal-close" onClick={() => setSelectedItem(null)}>×</button>
@@ -218,7 +219,8 @@ export default function CommunityFeed() {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
