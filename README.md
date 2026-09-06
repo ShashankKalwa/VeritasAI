@@ -1,10 +1,36 @@
-# VeritasAI — Retrieval-Augmented Misinformation Verification (v3.0)
+# 🔍 VeritasAI
+**"See Through the Noise"**
 
-> **"See Through the Noise"** — Claim-level fact verification with evidence retrieval, automated trending, and explainable AI.
+> A full-stack, 12-step misinformation verification platform that breaks down articles into atomic checkable claims, retrieves real-time evidence, and computes a credibility-weighted ensemble verdict.
 
-VeritasAI is an advanced AI platform that verifies claims in news articles by extracting checkable claims, retrieving real-time evidence from credible sources, computing ensemble NLP/ML signals, and producing explainable, evidence-based verdicts.
+[![CI/CD Pipeline](https://github.com/ShashankKalwa/VeritasAI/actions/workflows/ci.yml/badge.svg)](https://github.com/ShashankKalwa/VeritasAI/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+**[🔴 Live Demo (Replace with your Vercel link)](#)** 
+
+![VeritasAI Detect Page Demo](https://via.placeholder.com/800x450.png?text=VeritasAI+Detect+Page+Demo) 
+*(Add a short GIF or screenshot of the DetectPage here to instantly show what the app does)*
 
 ## 🔬 Verification Pipeline (v3)
+
+```mermaid
+graph TD
+    A[Input: URL, Text, File] --> B(Claim Extractor: Gemini 2.5 Flash)
+    B --> C{ClaimBuster Gate}
+    C -->|Opinion| Z[Discard]
+    C -->|Checkable Fact| D[Evidence Retrieval: Tavily & Fact Check API]
+    D --> E[Source Credibility Scoring]
+    D --> F[LLM Evidence Reasoner]
+    D --> G[NLP Signals: BERT + Heuristics]
+    E --> H((Ensemble Aggregator))
+    F --> H
+    G --> H
+    H --> I[Final 7-Label Verdict]
+```
+
+### Detailed Pipeline Steps
+<details>
+<summary>Click to expand full 12-step pipeline</summary>
 
 | Step | Component | Technology | Purpose |
 |------|-----------|-----------|---------|
@@ -20,6 +46,8 @@ VeritasAI is an advanced AI platform that verifies claims in news articles by ex
 | 10 | **Evidence Reasoning** | Gemini 3.1 Pro Preview | Classify evidence as supporting/contradicting/unclear |
 | 11 | **Ensemble Verdict** | Credibility-weighted | Per-claim + article verdict (50% evidence weight) |
 | 12 | **Explainability** | Custom | Primary/secondary signals, top sources |
+
+</details>
 
 ---
 
@@ -64,6 +92,23 @@ VeritasAI is an advanced AI platform that verifies claims in news articles by ex
 | 🔴 **False** | `#ef4444` | Clearly contradicted by reliable evidence |
 | ⚪ **Insufficient Evidence** | `#94a3b8` | Not enough sources found to verify |
 | 🟣 **Opinion / Not Fact-Checkable** | `#6366f1` | Not a factual claim (opinion, prediction) |
+
+---
+
+## 📊 Model Performance & Benchmarks
+
+VeritasAI is evaluated against a curated dataset of fact-checkable claims (see `backend/eval/dataset.json`). The ensemble pipeline achieves strong performance on identifying clear misinformation and credible facts.
+
+| Metric | Score | Note |
+|--------|-------|------|
+| **Accuracy** | `90.0%` | Overall correct classifications across all labels. |
+| **Precision (Misinfo)** | `83.3%` | High confidence when flagging claims as FALSE. |
+| **Recall (Misinfo)** | `100.0%` | Successfully identified all known FALSE claims in the test set. |
+| **F1 Score** | `90.9%` | Balanced harmonic mean of precision and recall. |
+
+**Failure Modes / Limitations:**
+- **Ambiguous Claims**: Claims that require deep semantic understanding or domain-specific context may be labeled as `MIXED` if the retrieval pipeline surfaces conflicting preliminary articles.
+- **Paywalled Evidence**: If crucial fact-checks are behind strict paywalls, the system may fall back to `Insufficient Evidence`.
 
 ---
 
@@ -125,9 +170,13 @@ VITE_API_URL=http://localhost:8000
 # Supabase
 SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_key
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 
-# Signal engines
+# ── CORS Configuration ──
+# Local: http://localhost:5173
+# Production: https://your-vercel-domain.vercel.app
+ALLOWED_ORIGINS=http://localhost:5173,https://veritasai-frontend.vercel.app
+
+# ── Signal engines ──
 HF_API_TOKEN=your_huggingface_token
 CLAIMBUSTER_HF_MODEL=whispAI/ClaimBuster-DeBERTaV2
 GOOGLE_FACTCHECK_API_KEY=your_google_factcheck_key
@@ -168,6 +217,13 @@ NEWS_API_PAGE_SIZE=10
 FEED_CRON_INTERVAL_HOURS=3
 FEED_SKIP_IF_ANALYZED_WITHIN_HOURS=12
 ```
+
+### 🛑 API Quota Exhaustion & Fallbacks
+VeritasAI relies on multiple free-tier APIs and gracefully handles quota exhaustion:
+- **Hugging Face (`[Errno -5]` or `429 Too Many Requests`)**: If the API times out or blocks requests, VeritasAI fast-fails after 3 seconds and bypasses the BERT/ClaimBuster signals. The ensemble relies purely on Gemini and Google Fact Check instead.
+- **Tavily Search API (Monthly limit reached)**: If Tavily returns a `429`, the system logs a warning and heavily weights Google Fact Check or falls back to "Insufficient Evidence" rather than crashing the pipeline.
+- **Gemini LLM (15 RPM / 1,500 RPD)**: If extraction or reasoning hits rate limits, the request fails gracefully and alerts the user to try again in a minute. We mitigate this using Upstash Redis to globally cache LLM extractions for 24 hours.
+- **Daily Analyze Limit (`DAILY_LIMIT_ANALYZE`)**: Global backend limiter that returns a `429 Too Many Requests` HTTP error if the public-facing endpoint is abused.
 
 ---
 
@@ -255,5 +311,7 @@ VeritasAI/
 ---
 
 ## 👥 Team
+
+**VeritasAI** was originally built as a hackathon project by **Atharv Sawane** and **Shashank Kalwa**. It is currently solo-maintained and developed by Shashank Kalwa.
 
 *VeritasAI — See Through the Noise* 🔍

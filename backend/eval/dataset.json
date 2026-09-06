@@ -1,0 +1,52 @@
+[
+  {
+    "id": "c1",
+    "claim": "The COVID-19 vaccines alter human DNA.",
+    "ground_truth": "FALSE"
+  },
+  {
+    "id": "c2",
+    "claim": "Water boils at 100 degrees Celsius at sea level.",
+    "ground_truth": "TRUE"
+  },
+  {
+    "id": "c3",
+    "claim": "The Apollo 11 moon landing was faked in a Hollywood studio.",
+    "ground_truth": "FALSE"
+  },
+  {
+    "id": "c4",
+    "claim": "Photosynthesis is the process by which plants use sunlight to synthesize foods from carbon dioxide and water.",
+    "ground_truth": "TRUE"
+  },
+  {
+    "id": "c5",
+    "claim": "5G cell phone networks are responsible for the spread of the coronavirus.",
+    "ground_truth": "FALSE"
+  },
+  {
+    "id": "c6",
+    "claim": "Drinking bleach or injecting disinfectants can cure cancer and COVID-19.",
+    "ground_truth": "FALSE"
+  },
+  {
+    "id": "c7",
+    "claim": "The Earth orbits the Sun, completing one revolution approximately every 365.25 days.",
+    "ground_truth": "TRUE"
+  },
+  {
+    "id": "c8",
+    "claim": "Bill Gates put microchips in global vaccines to track people.",
+    "ground_truth": "FALSE"
+  },
+  {
+    "id": "c9",
+    "claim": "Albert Einstein developed the theory of general relativity in 1915.",
+    "ground_truth": "TRUE"
+  },
+  {
+    "id": "c10",
+    "claim": "The Earth is flat and surrounded by a giant ice wall.",
+    "ground_truth": "FALSE"
+  }
+]

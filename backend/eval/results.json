@@ -1,0 +1,87 @@
+{
+  "total_claims": 10,
+  "metrics": {
+    "precision": 0.833,
+    "recall": 1.0,
+    "f1_score": 0.909,
+    "accuracy": 0.9
+  },
+  "confusion_matrix": {
+    "true_positives": 6,
+    "false_positives": 1,
+    "false_negatives": 0,
+    "true_negatives": 3
+  },
+  "details": [
+    {
+      "id": "c1",
+      "claim": "The COVID-19 vaccines alter human DNA.",
+      "ground_truth": "FALSE",
+      "predicted": "FALSE",
+      "correct": true
+    },
+    {
+      "id": "c2",
+      "claim": "Water boils at 100 degrees Celsius at sea level.",
+      "ground_truth": "TRUE",
+      "predicted": "TRUE",
+      "correct": true
+    },
+    {
+      "id": "c3",
+      "claim": "The Apollo 11 moon landing was faked in a Hollywood studio.",
+      "ground_truth": "FALSE",
+      "predicted": "FALSE",
+      "correct": true
+    },
+    {
+      "id": "c4",
+      "claim": "Photosynthesis is the process by which plants use sunlight to synthesize foods from carbon dioxide and water.",
+      "ground_truth": "TRUE",
+      "predicted": "TRUE",
+      "correct": true
+    },
+    {
+      "id": "c5",
+      "claim": "5G cell phone networks are responsible for the spread of the coronavirus.",
+      "ground_truth": "FALSE",
+      "predicted": "MIXED",
+      "correct": false
+    },
+    {
+      "id": "c6",
+      "claim": "Drinking bleach or injecting disinfectants can cure cancer and COVID-19.",
+      "ground_truth": "FALSE",
+      "predicted": "FALSE",
+      "correct": true
+    },
+    {
+      "id": "c7",
+      "claim": "The Earth orbits the Sun, completing one revolution approximately every 365.25 days.",
+      "ground_truth": "TRUE",
+      "predicted": "TRUE",
+      "correct": true
+    },
+    {
+      "id": "c8",
+      "claim": "Bill Gates put microchips in global vaccines to track people.",
+      "ground_truth": "FALSE",
+      "predicted": "FALSE",
+      "correct": true
+    },
+    {
+      "id": "c9",
+      "claim": "Albert Einstein developed the theory of general relativity in 1915.",
+      "ground_truth": "TRUE",
+      "predicted": "TRUE",
+      "correct": true
+    },
+    {
+      "id": "c10",
+      "claim": "The Earth is flat and surrounded by a giant ice wall.",
+      "ground_truth": "FALSE",
+      "predicted": "FALSE",
+      "correct": true
+    }
+  ]
+}

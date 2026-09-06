@@ -24,6 +24,20 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 *.sw?
 
 .env
@@ -35,6 +49,8 @@ backend/lib/__pycache__/
 backend/routes/__pycache__/
 __pycache__/
 *.pyc
+.pytest_cache/
+/test*.py
 
 # Environment files
 .env.*
