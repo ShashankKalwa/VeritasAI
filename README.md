@@ -6,7 +6,7 @@
 [![CI/CD Pipeline](https://github.com/ShashankKalwa/VeritasAI/actions/workflows/ci.yml/badge.svg)](https://github.com/ShashankKalwa/VeritasAI/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-**[🔴 Live Demo (Replace with your Vercel link)](#)** 
+**[🔴 Live Demo](https://veritas-ai-delta.vercel.app/)** 
 
 ![VeritasAI Detect Page Demo](https://via.placeholder.com/800x450.png?text=VeritasAI+Detect+Page+Demo) 
 *(Add a short GIF or screenshot of the DetectPage here to instantly show what the app does)*
